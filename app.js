@@ -139,15 +139,55 @@ const QC_JOB_FIELDS = [
 ];
 
 const QC_INSPECTION_ITEMS = [
-  { id: 'siteCleanliness', label: 'Site Cleanliness', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
-  { id: 'frameAlignment', label: 'Frame Alignment / Plumb', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
-  { id: 'fasteners', label: 'Fasteners Installed Correctly', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
-  { id: 'screenInstall', label: 'Screen Install Quality', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
-  { id: 'doorsHardware', label: 'Doors / Hardware Operation', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
-  { id: 'gutterDrainage', label: 'Gutter / Drainage Check', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
-  { id: 'sealantCaulking', label: 'Sealant / Caulking', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
-  { id: 'paintFinish', label: 'Paint / Finish Condition', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
-  { id: 'customerWalkthrough', label: 'Customer Walkthrough Complete', options: ['', 'Yes', 'No', 'N/A'] }
+  { id: 'superGutterSeamsFastened', label: 'Super Gutter seams fastened tight', options: ['', 'Yes', 'No'] },
+  { id: 'doorsOperationalAndLock', label: 'Doors are operational and lock', options: ['', 'Yes', 'No'] },
+  { id: 'doorKeepersRemovedExplained', label: 'Door keepers removed and explained to customers', options: ['', 'Yes', 'No'] },
+  { id: 'bugSweepsNoGaps', label: 'Bug sweeps installed with no gaps', options: ['', 'Yes', 'No'] },
+  { id: 'weepHoleAtBeamCaps', label: 'Weep hole at beam caps', options: ['', 'Yes', 'No'] },
+  { id: 'screwProtecCapsComplete', label: 'Screw/Protec caps fasteners are complete', options: ['', 'Yes', 'No'] },
+  { id: 'caulkingInsideOutside', label: 'Caulking is applied inside and outside', options: ['', 'Yes', 'No'] },
+  { id: 'ezCleansProperlyInstalled', label: 'EZ Cleans are properly installed', options: ['', 'Yes', 'No'] },
+  { id: 'openAreasGapsAddressed', label: 'Open area or gaps have been addressed', options: ['', 'Yes', 'No'] },
+  { id: 'beamCapsInstalledProperly', label: 'Beam caps installed properly', options: ['', 'Yes', 'No'] },
+  { id: 'screenFreeOfDefects', label: 'Screen is free of defects, wrinkles, and bubbles', options: ['', 'Yes', 'No'] },
+  { id: 'cableNutsTightNoPaverRub', label: 'Cable is and cable nuts are tight and not rubbing on pavers', options: ['', 'Yes', 'No'] },
+  { id: 'groundWireAttached', label: 'Ground wire is attached from cage to pump', options: ['', 'Yes', 'No'] },
+  { id: 'retractableScreensOperational', label: 'Retractable screens are operational', options: ['', 'Yes', 'No'] }
+];
+
+const QC_GUTTER_ITEMS = [
+  { id: 'downspoutsProperLocation', label: 'Downspouts installed in proper location', options: ['', 'Yes', 'No'] },
+  { id: 'downspoutElbowsExtensionsInstalled', label: 'Downspouts ground level elbow with extensions are installed', options: ['', 'Yes', 'No'] },
+  { id: 'divertersInstalled', label: 'Diverters Installed', options: ['', 'Yes', 'No'] },
+  { id: 'leafGuardInstalled', label: 'Leaf Guard system installed', options: ['', 'Yes', 'No'] },
+  { id: 'superGutterSeamsLeakFree', label: 'Super gutter seams are fastened tight and leak free', options: ['', 'Yes', 'No'] },
+  { id: 'hiddenHangersSealed', label: 'Hidden hangers are properly sealed', options: ['', 'Yes', 'No'] }
+];
+const QC_PERGOLA_PAN6_ITEMS = [
+  { id: 'louversOperational', label: 'Louvers are operational', options: ['', 'Yes', 'No'] },
+  { id: 'fansLightsOperational', label: 'Fans/lights are operational', options: ['', 'Yes', 'No'] },
+  { id: 'materialScratchDentFree', label: 'Material is scratch & dent free', options: ['', 'Yes', 'No'] },
+  { id: 'superGutterSeamsNeatLeakFree', label: 'Super gutter seams are fastened neat and leak free', options: ['', 'Yes', 'No'] },
+  { id: 'doorsOperationalAndLockPergola', label: 'Doors are operational and lock', options: ['', 'Yes', 'No'] },
+  { id: 'doorKeepersRemovedExplainedPergola', label: 'Door keepers removed and explained to customers', options: ['', 'Yes', 'No'] },
+  { id: 'bugSweepsNoGapsPergola', label: 'Bug sweeps installed with no gaps', options: ['', 'Yes', 'No'] },
+  { id: 'weepHoleAtBeamCapsPergola', label: 'Weep hole at beam caps', options: ['', 'Yes', 'No'] },
+  { id: 'screwProtecCapsCompletePergola', label: 'Screw/Protec caps fasteners are complete', options: ['', 'Yes', 'No'] },
+  { id: 'caulkingInsideOutsidePergola', label: 'Caulking is applied inside and outside', options: ['', 'Yes', 'No'] },
+  { id: 'ezCleansProperlyInstalledPergola', label: 'EZ cleans are properly installed', options: ['', 'Yes', 'No'] },
+  { id: 'openAreasGapsAddressedPergola', label: 'Open areas or gaps have been addressed', options: ['', 'Yes', 'No'] },
+  { id: 'screenFreeOfDefectsPergola', label: 'Screen is free of defects, wrinkles & bubbles', options: ['', 'Yes', 'No'] },
+  { id: 'retractableScreensOperationalPergola', label: 'Retractable screens are operational', options: ['', 'Yes', 'No'] }
+];
+
+const QC_GENERAL_ITEMS = [
+  { id: 'jobSiteClean', label: 'Job Site Clean', options: ['', 'Yes', 'No'] },
+  { id: 'completionPerContract', label: 'Completion of Job per Contract', options: ['', 'Yes', 'No'] },
+  { id: 'permitPosted', label: 'Permit Posted', options: ['', 'Yes', 'No'] },
+  { id: 'overallSatisfaction', label: 'Overall Satisfaction', options: ['', 'Yes', 'No'] },
+  { id: 'surveys', label: 'Surveys', options: ['', 'Yes', 'No'] },
+  { id: 'paymentCollected', label: 'Payment Collected', options: ['', 'Yes', 'No'] },
+  { id: 'tervisTumblers', label: 'Tervis Tumblers', options: ['', 'Yes', 'No'] }
 ];
 
 const QC_CORRECTIVE_ITEMS = [
@@ -191,7 +231,10 @@ const DOCUMENT_TYPES = {
     fields: QC_JOB_FIELDS,
     displayedWording: {},
     groups: [
-      { key: 'items', title: 'Quality Control Checks', pdfTitle: 'QUALITY CONTROL CHECKS', continuedTitle: 'Quality Control Checks continued', items: QC_INSPECTION_ITEMS },
+      { key: 'items', title: 'Enclosures', pdfTitle: 'ENCLOSURES', continuedTitle: 'Enclosures continued', items: QC_INSPECTION_ITEMS },
+      { key: 'gutters', title: 'Gutters', pdfTitle: 'GUTTERS', continuedTitle: 'Gutters continued', items: QC_GUTTER_ITEMS },
+      { key: 'pergolaPan6', title: 'Pergola & Pan6', pdfTitle: 'PERGOLA & PAN6', continuedTitle: 'Pergola & Pan6 continued', items: QC_PERGOLA_PAN6_ITEMS },
+      { key: 'general', title: 'General Section', pdfTitle: 'GENERAL SECTION', continuedTitle: 'General Section continued', items: QC_GENERAL_ITEMS },
       { key: 'inHouse', title: 'Corrections / Follow-Up', pdfTitle: 'CORRECTIONS / FOLLOW-UP', continuedTitle: 'Corrections / Follow-Up continued', items: QC_CORRECTIVE_ITEMS }
     ]
   }
@@ -202,7 +245,7 @@ const DEFAULT_DOCUMENT_TYPE = 'precon';
 const REQUIRED_ELEMENT_IDS = [
   'installBtn', 'newJobBtn', 'saveBtn', 'jobList', 'storageStatus', 'currentJobTitle', 'dirtyPill',
   'documentTypeSelect', 'jobInfoFields', 'inspectionSectionTitle', 'inspectionItems', 'inHouseSectionTitle', 'inHouseItems',
-  'summaryNotes', 'addPhotosBtn', 'photoInput', 'photoGrid',
+  'extraDocumentSections', 'summaryNotes', 'addPhotosBtn', 'photoInput', 'photoGrid',
   'refreshPhotosBtn', 'clearPhotosBtn', 'signedPdfBtn', 'outputStatus',
   'typedSignatureName', 'useTypedSignatureBtn', 'signatureCanvas', 'clearSignatureBtn', 'signatureStatus',
   'bottomSaveBtn', 'bottomSignedPdfBtn', 'bottomOutputStatus',
@@ -282,6 +325,9 @@ function normalizeJob(job) {
   out.fields = out.fields || {};
   out.items = out.items || {};
   out.inHouse = out.inHouse || {};
+  out.gutters = out.gutters || {};
+  out.pergolaPan6 = out.pergolaPan6 || {};
+  out.general = out.general || {};
   out.summaryNotes = out.summaryNotes || '';
   return out;
 }
@@ -307,6 +353,12 @@ function renderFormShell() {
   `).join('');
   els.inspectionItems.innerHTML = (doc.groups[0]?.items || []).map(item => renderChecklistItem(item, doc.groups[0].key)).join('');
   els.inHouseItems.innerHTML = (doc.groups[1]?.items || []).map(item => renderChecklistItem(item, doc.groups[1].key)).join('');
+  els.extraDocumentSections.innerHTML = doc.groups.slice(2).map(group => `
+    <section class="card">
+      <h2>${escapeHtml(group.title)}</h2>
+      <div>${group.items.map(item => renderChecklistItem(item, group.key)).join('')}</div>
+    </section>
+  `).join('');
 }
 
 /* Render a single checklist item card */
