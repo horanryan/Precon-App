@@ -131,6 +131,7 @@ const REQUIRED_ELEMENT_IDS = [
   'installBtn', 'newJobBtn', 'saveBtn', 'jobList', 'storageStatus', 'currentJobTitle', 'dirtyPill',
   'jobInfoFields', 'inspectionItems', 'inHouseItems', 'summaryNotes', 'addPhotosBtn', 'photoInput', 'photoGrid',
   'refreshPhotosBtn', 'clearPhotosBtn', 'signedPdfBtn', 'outputStatus',
+  'signatureCanvas', 'clearSignatureBtn', 'signatureStatus',
   'bottomSaveBtn', 'bottomSignedPdfBtn', 'bottomOutputStatus',
   'checklistForm'
 ];
@@ -140,6 +141,9 @@ let currentJob = blankJob();
 let deferredInstallPrompt = null;
 const els = {};
 const photoUrls = new Map();
+let signatureDrawing = false;
+let signatureHasInk = false;
+let signatureImageData = '';
 
 /* Initialize app when DOM is ready */
 window.addEventListener('DOMContentLoaded', async () => {
@@ -315,6 +319,7 @@ function bindEvents() {
     }
   });
 
+  bindSignaturePad();
   els.signedPdfBtn.addEventListener('click', generatePacket);
   bindAsyncClick(els.bottomSaveBtn, saveCurrentDraft, 'Save failed');
   els.bottomSignedPdfBtn.addEventListener('click', generatePacket);
@@ -329,6 +334,118 @@ function bindAsyncClick(el, action, label) {
       setStatus(`${label}: ${err.message || 'unknown error'}`);
     }
   });
+}
+
+function bindSignaturePad() {
+  resizeSignatureCanvas();
+  window.addEventListener('resize', resizeSignatureCanvas);
+
+  els.signatureCanvas.addEventListener('pointerdown', event => {
+    event.preventDefault();
+    signatureDrawing = true;
+    els.signatureCanvas.setPointerCapture?.(event.pointerId);
+    const point = signaturePoint(event);
+    const ctx = signatureContext();
+    ctx.beginPath();
+    ctx.moveTo(point.x, point.y);
+  });
+
+  els.signatureCanvas.addEventListener('pointermove', event => {
+    if (!signatureDrawing) return;
+    event.preventDefault();
+    const point = signaturePoint(event);
+    const ctx = signatureContext();
+    ctx.lineTo(point.x, point.y);
+    ctx.stroke();
+    signatureHasInk = true;
+    updateSignatureStatus();
+  });
+
+  ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
+    els.signatureCanvas.addEventListener(type, event => {
+      if (!signatureDrawing) return;
+      signatureDrawing = false;
+      if (els.signatureCanvas.hasPointerCapture?.(event.pointerId)) {
+        els.signatureCanvas.releasePointerCapture(event.pointerId);
+      }
+      if (signatureHasInk) {
+        signatureImageData = els.signatureCanvas.toDataURL('image/png');
+        markDirty(true);
+      }
+      updateSignatureStatus();
+    });
+  });
+
+  els.clearSignatureBtn.addEventListener('click', () => {
+    signatureHasInk = false;
+    signatureImageData = '';
+    clearSignatureCanvas();
+    updateSignatureStatus();
+    markDirty(true);
+  });
+}
+
+function resizeSignatureCanvas() {
+  const canvas = els.signatureCanvas;
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect();
+  const width = Math.max(320, Math.round(rect.width || 0));
+  const height = Math.max(190, Math.round(rect.height || 0));
+  const ratio = window.devicePixelRatio || 1;
+
+  if (canvas.width !== Math.round(width * ratio) || canvas.height !== Math.round(height * ratio)) {
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+  }
+
+  const ctx = signatureContext();
+  ctx.clearRect(0, 0, width, height);
+  if (signatureImageData) drawSignatureImage(signatureImageData);
+}
+
+function signatureContext() {
+  const canvas = els.signatureCanvas;
+  const ratio = window.devicePixelRatio || 1;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = '#201727';
+  return ctx;
+}
+
+function signaturePoint(event) {
+  const rect = els.signatureCanvas.getBoundingClientRect();
+  return {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
+  };
+}
+
+function clearSignatureCanvas() {
+  const canvas = els.signatureCanvas;
+  const rect = canvas.getBoundingClientRect();
+  signatureContext().clearRect(0, 0, rect.width, rect.height);
+}
+
+async function drawSignatureImage(dataUrl) {
+  try {
+    const img = await loadImage(dataUrl);
+    const canvas = els.signatureCanvas;
+    const rect = canvas.getBoundingClientRect();
+    const ctx = signatureContext();
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    ctx.drawImage(img, 0, 0, rect.width, rect.height);
+  } catch (err) {
+    console.warn('Saved signature could not be drawn', err);
+  }
+}
+
+function updateSignatureStatus() {
+  els.signatureStatus.textContent = signatureHasInk
+    ? 'Captured signature will be embedded in the PDF.'
+    : 'No captured signature. PDF will include a signature field.';
 }
 
 /* Track unsaved changes and update status indicators */
@@ -355,12 +472,21 @@ function collectJobFromForm() {
   job.inHouse = collectItemGroup('inHouse', IN_HOUSE_ITEMS);
   job.summaryNotes = els.summaryNotes.value.trim();
 
-  resetSignatureFields(job);
+  collectSignatureFields(job);
 
   return job;
 }
 
-function resetSignatureFields(job) {
+function collectSignatureFields(job) {
+  if (signatureHasInk && signatureImageData) {
+    job.signatureMode = 'captured';
+    job.signatureName = job.fields?.customerName || '';
+    job.signatureDate = job.signatureDate || new Date().toISOString().slice(0, 10);
+    job.signatureImage = signatureImageData;
+    delete job.remote;
+    return;
+  }
+
   job.signatureDate = '';
   delete job.signatureMode;
   delete job.signatureName;
@@ -391,6 +517,10 @@ function hydrateForm(job) {
   hydrateItemGroup('items', INSPECTION_ITEMS, job.items || {});
   hydrateItemGroup('inHouse', IN_HOUSE_ITEMS, job.inHouse || {});
   els.summaryNotes.value = job.summaryNotes || '';
+  signatureImageData = job.signatureImage || '';
+  signatureHasInk = Boolean(signatureImageData);
+  resizeSignatureCanvas();
+  updateSignatureStatus();
   els.currentJobTitle.textContent = [job.fields?.jobNumberPhase, job.fields?.customerName].filter(Boolean).join(' - ') || 'New Checklist';
   markDirty(false);
 }
@@ -666,7 +796,12 @@ async function generatePacket() {
 function packetFilename(job) {
   const jobNum = safeFilename(job.fields?.jobNumberPhase || 'PreCon');
   const customer = safeFilename(job.fields?.customerName || 'Customer');
-  return `${jobNum}-${customer}-PreConstruction-PRE-SIGNATURE.pdf`;
+  const signatureState = job.signatureImage ? 'SIGNED' : 'PRE-SIGNATURE';
+  return `${jobNum}-${customer}-PreConstruction-${signatureState}.pdf`;
+}
+
+function packetSubtitle(job) {
+  return job.signatureImage ? 'In-person signed packet' : 'Pre-signature packet';
 }
 
 /* Build the PDF document structure for the preconstruction packet */
@@ -680,7 +815,7 @@ async function buildPreconPacketPdf(job, photos) {
 /* Add the checklist pages to the PDF document */
 async function addChecklistPages(doc, job) {
   let page = newPdfPage(doc.logo);
-  let y = startPdfPage(page, job, 'Pre-signature packet');
+  let y = startPdfPage(page, job, packetSubtitle(job));
   const jobFields = filledJobFields(job);
 
   if (jobFields.length) {
@@ -712,8 +847,8 @@ async function addChecklistPages(doc, job) {
   doc.pages.push(page);
 
   const sigPage = newPdfPage(doc.logo);
-  startPdfPage(sigPage, job, 'Signature page');
-  addSignatureBlock(sigPage, job, 156);
+  startPdfPage(sigPage, job, job.signatureImage ? 'Captured signature page' : 'Signature page');
+  await addSignatureBlock(sigPage, job, 156);
   addFooter(sigPage);
   doc.pages.push(sigPage);
 }
@@ -861,15 +996,26 @@ function addSummaryBlock(page, job, y) {
 }
 
 /* Add the signature section to the PDF */
-function addSignatureBlock(page, job, y) {
+async function addSignatureBlock(page, job, y) {
   y = sectionBar(page, 'CUSTOMER ACKNOWLEDGMENT', y);
   wrappedText(page, 'By signing below, customer acknowledges the Pre-Construction Checklist and all included selections, notes, and attachments.', MARGIN, y + 6, PAGE_W - MARGIN * 2, 10, 13, 'F1');
   y += 86;
-  addSignatureField(page, 'CustomerSignature', MARGIN, y - 34, 300, 34);
+  if (job.signatureImage) {
+    try {
+      const signature = await dataUrlToJpegImage(job.signatureImage, 900, 0.92);
+      const fit = fitRect(signature.width, signature.height, 292, 42);
+      imageOnPage(page, signature, MARGIN + 4, y - 46 + (42 - fit.h) / 2, fit.w, fit.h);
+    } catch (err) {
+      console.warn('Captured signature could not be embedded; adding fillable field instead', err);
+      addSignatureField(page, 'CustomerSignature', MARGIN, y - 34, 300, 34);
+    }
+  } else {
+    addSignatureField(page, 'CustomerSignature', MARGIN, y - 34, 300, 34);
+  }
   line(page, MARGIN, y, MARGIN + 300, y, PDF_COLORS.teal);
   text(page, 'Customer Signature', MARGIN, y + 16, 8, 'F2', PDF_COLORS.plum);
-  labelValue(page, 'Customer Printed Name', job.fields?.customerName || '', MARGIN, y + 42, 250);
-  labelValue(page, 'Date', '', 330, y + 42, 160);
+  labelValue(page, 'Customer Printed Name', job.signatureName || job.fields?.customerName || '', MARGIN, y + 42, 250);
+  labelValue(page, 'Date', formatDateForPdf(job.signatureDate), 330, y + 42, 160);
 }
 
 function addSignatureField(page, name, xTop, yTop, w, h) {
@@ -1239,6 +1385,13 @@ function formatBytes(bytes) {
     i++;
   }
   return `${n.toFixed(n >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function formatDateForPdf(value) {
+  if (!value) return '';
+  const [year, month, day] = String(value).split('-').map(Number);
+  if (!year || !month || !day) return value;
+  return `${month}/${day}/${year}`;
 }
 
 /* Create a filename safe for download by stripping invalid characters */

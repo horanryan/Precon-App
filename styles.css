@@ -344,7 +344,7 @@ button.full { width: 100%; margin-bottom: .75rem; }
 
 .signature-area canvas {
   width: 100%;
-  min-height: 190px;
+  height: 210px;
   touch-action: none;
   border: 2px dashed var(--teal);
   border-radius: 8px;

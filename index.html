@@ -35,8 +35,8 @@
 
       <section class="card compact-card">
         <h2>Packet Output</h2>
-        <button id="signedPdfBtn" class="full" type="button">Download Pre-Signature PDF</button>
-        <p class="muted small">The PDF is created offline. Open the downloaded packet in the sales platform for local or remote signature.</p>
+        <button id="signedPdfBtn" class="full" type="button">Download PDF Packet</button>
+        <p class="muted small">Capture an in-person signature below, or leave it blank to include a fillable signature field in the PDF.</p>
         <div id="outputStatus" class="status-box"></div>
       </section>
     </aside>
@@ -91,13 +91,20 @@
 
         <section class="card signature-page-note">
           <h2>Signature Page</h2>
-          <p class="muted">The downloaded packet includes a signature page after the checklist and before the photo pages.</p>
+          <p class="muted">Sign in person here, or leave this blank to keep a fillable customer signature field in the PDF.</p>
+          <div class="signature-area">
+            <canvas id="signatureCanvas" aria-label="Customer signature pad"></canvas>
+          </div>
+          <div class="signature-actions">
+            <button id="clearSignatureBtn" class="secondary" type="button">Clear Signature</button>
+            <span id="signatureStatus" class="muted small">No captured signature. PDF will include a signature field.</span>
+          </div>
         </section>
 
         <section class="card bottom-actions-card">
           <h2>Finish Checklist</h2>
           <div class="bottom-actions">
-            <button id="bottomSignedPdfBtn" type="button">Download Pre-Signature PDF</button>
+            <button id="bottomSignedPdfBtn" type="button">Download PDF Packet</button>
             <button id="bottomSaveBtn" class="secondary" type="button">Save Draft</button>
           </div>
           <div id="bottomOutputStatus" class="status-box"></div>
