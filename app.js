@@ -873,7 +873,7 @@ function packetSubtitle(job) {
 
 /* Build the PDF document structure for the preconstruction packet */
 async function buildPreconPacketPdf(job, photos) {
-  const doc = { pages: [], logo: await loadPdfLogo() };
+  const doc = { pages: [], logo: await loadPdfLogo(), editLocked: Boolean(job.signatureImage) };
   await addChecklistPages(doc, job);
   await addPhotoPages(doc, job, photos);
   return buildPdf(doc);
@@ -1073,8 +1073,8 @@ async function addSignatureBlock(page, job, y) {
       const fit = fitRect(signature.width, signature.height, 292, 42);
       imageOnPage(page, signature, MARGIN + 4, y - 46 + (42 - fit.h) / 2, fit.w, fit.h);
     } catch (err) {
-      console.warn('Captured signature could not be embedded; adding fillable field instead', err);
-      addSignatureField(page, 'CustomerSignature', MARGIN, y - 34, 300, 34);
+      console.warn('Captured signature could not be embedded', err);
+      throw new Error('Captured signature could not be embedded in the locked PDF.');
     }
   } else {
     addSignatureField(page, 'CustomerSignature', MARGIN, y - 34, 300, 34);
@@ -1083,6 +1083,9 @@ async function addSignatureBlock(page, job, y) {
   text(page, 'Customer Signature', MARGIN, y + 16, 8, 'F2', PDF_COLORS.plum);
   labelValue(page, 'Customer Printed Name', job.signatureName || job.fields?.customerName || '', MARGIN, y + 42, 250);
   labelValue(page, 'Date', formatDateForPdf(job.signatureDate), 330, y + 42, 160);
+  if (job.signatureImage) {
+    wrappedText(page, 'Local signature captured. This PDF is locked against editing in standard PDF viewers.', MARGIN, y + 98, PAGE_W - MARGIN * 2, 8, 10, 'F1', 2);
+  }
 }
 
 function addSignatureField(page, name, xTop, yTop, w, h) {
@@ -1175,6 +1178,8 @@ function buildPdf(doc) {
   let nextObj = 5;
   images.forEach(img => { img.obj = nextObj++; });
   doc.pages.forEach(page => { page.contentObj = nextObj++; page.pageObj = nextObj++; });
+  const security = doc.editLocked ? createPdfEditLockSecurity() : null;
+  if (security) security.obj = nextObj++;
   const annotations = [];
   doc.pages.forEach(page => {
     page.annotations.forEach(annotation => {
@@ -1189,12 +1194,13 @@ function buildPdf(doc) {
   objects[2] = `<< /Type /Pages /Kids [${doc.pages.map(p => `${p.pageObj} 0 R`).join(' ')}] /Count ${doc.pages.length} >>`;
   objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
   objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
-  images.forEach(img => { objects[img.obj] = imageObject(img); });
+  if (security) objects[security.obj] = pdfEncryptionObject(security);
+  images.forEach(img => { objects[img.obj] = imageObject(img, security, img.obj); });
   annotations.forEach(annotation => { objects[annotation.obj] = annotationObject(annotation); });
 
   doc.pages.forEach(page => {
     const content = ['0 g', '0.7 w', ...page.commands].join('\n');
-    objects[page.contentObj] = streamObject(asciiBytes(content));
+    objects[page.contentObj] = streamObject(asciiBytes(content), security, page.contentObj);
     const xObjects = page.images.length ? `/XObject << ${page.images.map(img => `/${img.name} ${img.obj} 0 R`).join(' ')} >>` : '';
     const annots = page.annotations.length ? `/Annots [${page.annotations.map(annotation => `${annotation.obj} 0 R`).join(' ')}]` : '';
     objects[page.pageObj] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> ${xObjects} >> ${annots} /Contents ${page.contentObj} 0 R >>`;
@@ -1214,7 +1220,8 @@ function buildPdf(doc) {
   const xrefOffset = byteLength(chunks);
   pushAscii(chunks, `xref\n0 ${objects.length}\n0000000000 65535 f \n`);
   for (let i = 1; i < objects.length; i++) pushAscii(chunks, `${String(offsets[i]).padStart(10, '0')} 00000 n \n`);
-  pushAscii(chunks, `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+  const encryptionTrailer = security ? ` /Encrypt ${security.obj} 0 R /ID [<${bytesToHex(security.fileId)}> <${bytesToHex(security.fileId)}>]` : '';
+  pushAscii(chunks, `trailer\n<< /Size ${objects.length} /Root 1 0 R${encryptionTrailer} >>\nstartxref\n${xrefOffset}\n%%EOF`);
   return concatBytes(chunks);
 }
 
@@ -1234,16 +1241,177 @@ function signatureAnnotationObject(annotation) {
 }
 
 /* Encode an image object for PDF embedding */
-function imageObject(img) {
+function imageObject(img, security = null, objNum = 0) {
+  const bytes = security ? encryptPdfObjectBytes(security, objNum, img.bytes) : img.bytes;
   return concatBytes([
-    asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${img.bytes.length} >>\nstream\n`),
-    img.bytes,
+    asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`),
+    bytes,
     asciiBytes('\nendstream')
   ]);
 }
 
-function streamObject(bytes) {
-  return concatBytes([asciiBytes(`<< /Length ${bytes.length} >>\nstream\n`), bytes, asciiBytes('\nendstream')]);
+function streamObject(bytes, security = null, objNum = 0) {
+  const out = security ? encryptPdfObjectBytes(security, objNum, bytes) : bytes;
+  return concatBytes([asciiBytes(`<< /Length ${out.length} >>\nstream\n`), out, asciiBytes('\nendstream')]);
+}
+
+function createPdfEditLockSecurity() {
+  const fileId = randomBytes(16);
+  const userPassword = padPdfPassword('');
+  const ownerPassword = padPdfPassword(bytesToHex(randomBytes(16)));
+  const ownerKey = md5Bytes(ownerPassword).slice(0, 5);
+  const ownerEntry = rc4(ownerKey, userPassword);
+  const permissions = -44; // Allow open/print/copy, disallow modification and annotation/editing in Adobe.
+  const keySeed = concatBytes([userPassword, ownerEntry, int32LeBytes(permissions), fileId]);
+  const fileKey = md5Bytes(keySeed).slice(0, 5);
+  const userEntry = rc4(fileKey, PDF_PASSWORD_PADDING);
+
+  return { fileId, ownerEntry, userEntry, permissions, fileKey };
+}
+
+function pdfEncryptionObject(security) {
+  return `<< /Filter /Standard /V 1 /R 2 /Length 40 /O <${bytesToHex(security.ownerEntry)}> /U <${bytesToHex(security.userEntry)}> /P ${security.permissions} >>`;
+}
+
+function encryptPdfObjectBytes(security, objNum, bytes, genNum = 0) {
+  const objectKeySeed = concatBytes([
+    security.fileKey,
+    new Uint8Array([objNum & 255, (objNum >> 8) & 255, (objNum >> 16) & 255, genNum & 255, (genNum >> 8) & 255])
+  ]);
+  const objectKey = md5Bytes(objectKeySeed).slice(0, Math.min(security.fileKey.length + 5, 16));
+  return rc4(objectKey, bytes);
+}
+
+const PDF_PASSWORD_PADDING = new Uint8Array([
+  0x28, 0xbf, 0x4e, 0x5e, 0x4e, 0x75, 0x8a, 0x41,
+  0x64, 0x00, 0x4e, 0x56, 0xff, 0xfa, 0x01, 0x08,
+  0x2e, 0x2e, 0x00, 0xb6, 0xd0, 0x68, 0x3e, 0x80,
+  0x2f, 0x0c, 0xa9, 0xfe, 0x64, 0x53, 0x69, 0x7a
+]);
+
+function padPdfPassword(value) {
+  const bytes = asciiBytes(String(value || ''));
+  const out = new Uint8Array(32);
+  out.set(bytes.slice(0, 32));
+  if (bytes.length < 32) out.set(PDF_PASSWORD_PADDING.slice(0, 32 - bytes.length), bytes.length);
+  return out;
+}
+
+function rc4(key, data) {
+  const s = new Uint8Array(256);
+  for (let i = 0; i < 256; i++) s[i] = i;
+  let j = 0;
+  for (let i = 0; i < 256; i++) {
+    j = (j + s[i] + key[i % key.length]) & 255;
+    const tmp = s[i]; s[i] = s[j]; s[j] = tmp;
+  }
+
+  const out = new Uint8Array(data.length);
+  let i = 0;
+  j = 0;
+  for (let n = 0; n < data.length; n++) {
+    i = (i + 1) & 255;
+    j = (j + s[i]) & 255;
+    const tmp = s[i]; s[i] = s[j]; s[j] = tmp;
+    out[n] = data[n] ^ s[(s[i] + s[j]) & 255];
+  }
+  return out;
+}
+
+function md5Bytes(input) {
+  const bytes = input instanceof Uint8Array ? input : asciiBytes(String(input));
+  const bitLength = bytes.length * 8;
+  const paddedLength = (((bytes.length + 8) >> 6) + 1) * 64;
+  const padded = new Uint8Array(paddedLength);
+  padded.set(bytes);
+  padded[bytes.length] = 0x80;
+  for (let i = 0; i < 8; i++) padded[paddedLength - 8 + i] = Math.floor(bitLength / (2 ** (8 * i))) & 255;
+
+  let a0 = 0x67452301;
+  let b0 = 0xefcdab89;
+  let c0 = 0x98badcfe;
+  let d0 = 0x10325476;
+  const s = [
+    7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+    5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+    6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
+  ];
+  const k = Array.from({ length: 64 }, (_, i) => Math.floor(Math.abs(Math.sin(i + 1)) * 2 ** 32) >>> 0);
+
+  for (let chunk = 0; chunk < padded.length; chunk += 64) {
+    const m = new Uint32Array(16);
+    for (let i = 0; i < 16; i++) {
+      const offset = chunk + i * 4;
+      m[i] = padded[offset] | (padded[offset + 1] << 8) | (padded[offset + 2] << 16) | (padded[offset + 3] << 24);
+    }
+
+    let a = a0;
+    let b = b0;
+    let c = c0;
+    let d = d0;
+
+    for (let i = 0; i < 64; i++) {
+      let f;
+      let g;
+      if (i < 16) {
+        f = (b & c) | (~b & d);
+        g = i;
+      } else if (i < 32) {
+        f = (d & b) | (~d & c);
+        g = (5 * i + 1) % 16;
+      } else if (i < 48) {
+        f = b ^ c ^ d;
+        g = (3 * i + 5) % 16;
+      } else {
+        f = c ^ (b | ~d);
+        g = (7 * i) % 16;
+      }
+
+      const temp = d;
+      d = c;
+      c = b;
+      b = (b + leftRotate((a + f + k[i] + m[g]) >>> 0, s[i])) >>> 0;
+      a = temp;
+    }
+
+    a0 = (a0 + a) >>> 0;
+    b0 = (b0 + b) >>> 0;
+    c0 = (c0 + c) >>> 0;
+    d0 = (d0 + d) >>> 0;
+  }
+
+  const out = new Uint8Array(16);
+  [a0, b0, c0, d0].forEach((word, index) => {
+    out[index * 4] = word & 255;
+    out[index * 4 + 1] = (word >> 8) & 255;
+    out[index * 4 + 2] = (word >> 16) & 255;
+    out[index * 4 + 3] = (word >> 24) & 255;
+  });
+  return out;
+}
+
+function leftRotate(value, shift) {
+  return ((value << shift) | (value >>> (32 - shift))) >>> 0;
+}
+
+function int32LeBytes(value) {
+  const n = value >>> 0;
+  return new Uint8Array([n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >> 24) & 255]);
+}
+
+function randomBytes(length) {
+  const out = new Uint8Array(length);
+  if (globalThis.crypto?.getRandomValues) {
+    globalThis.crypto.getRandomValues(out);
+  } else {
+    for (let i = 0; i < length; i++) out[i] = Math.floor(Math.random() * 256);
+  }
+  return out;
+}
+
+function bytesToHex(bytes) {
+  return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /* Helper to detect image files by MIME type or extension */
