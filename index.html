@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#35133e">
+  <title>Pre-Con Checklist Offline</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand-block">
+      <img class="brand-logo" src="assets/absolute-aluminum-logo.png" alt="Absolute Aluminum">
+      <div>
+        <p class="eyebrow">Pre-Construction</p>
+        <h1>Checklist</h1>
+        <p class="muted">Offline draft, unlimited photos by device storage, pre-signature packet output.</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="installBtn" class="secondary hidden" type="button">Install App</button>
+      <button id="newJobBtn" class="secondary" type="button">New Checklist</button>
+      <button id="saveBtn" type="button">Save Draft</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <section class="card">
+        <h2>Saved Drafts</h2>
+        <div id="storageStatus" class="storage-status">Checking storage...</div>
+        <div id="jobList" class="draft-list"></div>
+      </section>
+
+      <section class="card compact-card">
+        <h2>Packet Output</h2>
+        <button id="signedPdfBtn" class="full" type="button">Download Pre-Signature PDF</button>
+        <button id="backupBtn" class="full tertiary" type="button">Export Backup JSON</button>
+        <p class="muted small">The PDF is created offline. Open the downloaded packet in the sales platform for local or remote signature.</p>
+        <div id="outputStatus" class="status-box"></div>
+      </section>
+    </aside>
+
+    <section class="content">
+      <form id="checklistForm" autocomplete="off">
+        <section class="card hero-card">
+          <div class="hero-row">
+            <div>
+              <p class="eyebrow">Current Draft</p>
+              <h2 id="currentJobTitle">New Checklist</h2>
+              <p class="muted">Drafts are saved on this device. Upload/share the final PDF when ready.</p>
+            </div>
+            <div class="pill" id="dirtyPill">Unsaved</div>
+          </div>
+          <div id="jobInfoFields" class="grid two"></div>
+        </section>
+
+        <section class="card">
+          <h2>Inspection Items</h2>
+          <div id="inspectionItems"></div>
+        </section>
+
+        <section class="card">
+          <h2>In-House Use</h2>
+          <div id="inHouseItems"></div>
+        </section>
+
+        <section class="card">
+          <h2>Summary</h2>
+          <label class="field full-field">
+            <span>Summary Notes</span>
+            <textarea id="summaryNotes" rows="6" placeholder="Enter pre-construction summary notes..."></textarea>
+          </label>
+        </section>
+
+        <section class="card">
+          <div class="section-heading-row">
+            <div>
+              <h2>Photos</h2>
+              <p class="muted">Add as many as the device can store. Photos are compressed into the PDF output.</p>
+            </div>
+            <button id="addPhotosBtn" class="file-button" type="button">Add Photos</button>
+            <input id="photoInput" class="hidden-file-input" type="file" accept="image/*,.jpg,.jpeg,.png,.heic,.heif" multiple>
+          </div>
+          <div class="photo-tools">
+            <button id="refreshPhotosBtn" class="secondary" type="button">Refresh Photos</button>
+            <button id="clearPhotosBtn" class="danger subtle" type="button">Remove All Photos From Draft</button>
+          </div>
+          <div id="photoGrid" class="photo-grid"></div>
+        </section>
+
+        <section class="card signature-page-note">
+          <h2>Signature Page</h2>
+          <p class="muted">The downloaded packet includes a signature page after the checklist and before the photo pages.</p>
+        </section>
+
+        <section class="card bottom-actions-card">
+          <h2>Finish Checklist</h2>
+          <div class="bottom-actions">
+            <button id="bottomSignedPdfBtn" type="button">Download Pre-Signature PDF</button>
+            <button id="bottomSaveBtn" class="secondary" type="button">Save Draft</button>
+            <button id="bottomBackupBtn" class="tertiary" type="button">Export Backup JSON</button>
+          </div>
+          <div id="bottomOutputStatus" class="status-box"></div>
+        </section>
+      </form>
+    </section>
+  </main>
+
+  <template id="photoCardTemplate">
+    <article class="photo-card">
+      <img alt="Job photo preview">
+      <label class="field">
+        <span>Caption</span>
+        <textarea rows="2" placeholder="Photo caption / note"></textarea>
+      </label>
+      <div class="photo-card-actions">
+        <button class="secondary move-up" type="button">Up</button>
+        <button class="secondary move-down" type="button">Down</button>
+        <button class="danger remove-photo" type="button">Remove</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
