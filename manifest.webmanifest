@@ -1,6 +1,6 @@
 {
-  "name": "Pre-Con Checklist Offline",
-  "short_name": "Pre-Con",
+  "name": "Absolute Aluminum Document Builder",
+  "short_name": "DocBuilder",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f6f8ef",
