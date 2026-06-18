@@ -1250,5 +1250,10 @@ function safeFilename(value) {
     .replace(/^-|-$/g, '')
     .slice(0, 60) || 'PreCon';
 }
-function escapeHtml(value) { return String(value ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
-function debounce(fn, delay) { let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); }; }
+function escapeHtml(value) {
+   return String(value ?? '')
+    .replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); 
+}
+function debounce(fn, delay) {
+   let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); }; }
+
