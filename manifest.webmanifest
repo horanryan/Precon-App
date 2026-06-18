@@ -6,6 +6,6 @@
   "background_color": "#f6f8ef",
   "theme_color": "#35133e",
   "icons": [
-    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "assets/absolute-aluminum-logo.png", "sizes": "any", "type": "image/png" }
   ]
 }
