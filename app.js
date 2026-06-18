@@ -1,10 +1,16 @@
 'use strict';
 
+/*
+  App constants and store definitions
+*/
 const DB_NAME = 'absolute-precon-offline-v2';
 const DB_VERSION = 1;
+
+/* PDF page dimensions and design constants */
 const PAGE_W = 612;
 const PAGE_H = 792;
 const MARGIN = 42;
+
 const PDF_COLORS = {
   plum: [0.208, 0.075, 0.243],
   orange: [0.945, 0.357, 0.165],
@@ -13,8 +19,11 @@ const PDF_COLORS = {
   paleLime: [0.984, 1, 0.941],
   white: [1, 1, 1]
 };
+
+/* Standard selections used in multiple checklist items */
 const CUSTOMER_ACK_OPTIONS = ['', 'Customer Acknowledges', 'N/A'];
 
+/* Text blocks displayed on the form for selected checklist options */
 const DISPLAYED_WORDING = {
   irrigationLines: [['Customer Acknowledges', "Customer understands and acknowledges that Absolute Aluminum will not handle anything to do with sprinklers/lines etc. and that it is the customer's responsibility."]],
   bushes: [['Customer Acknowledges', 'Customer understands and acknowledges their responsibility to ensure the work area is prepared and cleared of vegetation prior to our arrival. A minimum of 2 feet of clearance is required around the work area. Vegetation taller than 3 feet must be trimmed down to allow safe ladder placement and access.']],
@@ -42,6 +51,7 @@ const DISPLAYED_WORDING = {
   expectations: [['Customer Acknowledges', 'Customer understands and acknowledges that no expectations have been set that are not expressly written in this contract.']]
 };
 
+/* Fields captured for each job checklist */
 const JOB_FIELDS = [
   { id: 'customerName', label: 'Customer Name', type: 'text' },
   { id: 'address', label: 'Address', type: 'text' },
@@ -101,6 +111,7 @@ const INSPECTION_ITEMS = [
   { id: 'expectations', label: 'Expectations', options: CUSTOMER_ACK_OPTIONS }
 ];
 
+/* In-house checklist items for internal notes and measurements */
 const IN_HOUSE_ITEMS = [
   { id: 'limitedWorkArea', label: 'Limited Work Area', input: 'text' },
   { id: 'gutterEndCaps', label: 'Gutter End Caps', input: 'text' },
@@ -122,6 +133,7 @@ let deferredInstallPrompt = null;
 const els = {};
 const photoUrls = new Map();
 
+/* Initialize app when DOM is ready */
 window.addEventListener('DOMContentLoaded', async () => {
   cacheEls();
   renderFormShell();
@@ -134,6 +146,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   registerServiceWorker();
 });
 
+/* Cache references to DOM elements for faster access */
 function cacheEls() {
   [
     'installBtn', 'newJobBtn', 'saveBtn', 'jobList', 'storageStatus', 'currentJobTitle', 'dirtyPill',
@@ -144,6 +157,7 @@ function cacheEls() {
   ].forEach(id => { els[id] = document.getElementById(id); });
 }
 
+/* Create a new blank job object with standard metadata */
 function blankJob() {
   const today = new Date().toISOString().slice(0, 10);
   return {
@@ -158,6 +172,7 @@ function blankJob() {
   };
 }
 
+/* Build the form UI from the checklist definitions */
 function renderFormShell() {
   els.jobInfoFields.innerHTML = JOB_FIELDS.map(field => `
     <label class="field ${field.id === 'address' ? 'full-field' : ''}">
@@ -169,6 +184,7 @@ function renderFormShell() {
   els.inHouseItems.innerHTML = IN_HOUSE_ITEMS.map(item => renderChecklistItem(item, 'inHouse')).join('');
 }
 
+/* Render a single checklist item card */
 function renderChecklistItem(item, kind) {
   const control = item.options ? renderSelectControl(item, kind) : renderTextControl(item, kind);
   const wording = renderDisplayedWording(item);
@@ -183,6 +199,7 @@ function renderChecklistItem(item, kind) {
   `;
 }
 
+/* Render a dropdown for option-based checklist items */
 function renderSelectControl(item, kind) {
   return `
     <label class="field">
@@ -194,6 +211,7 @@ function renderSelectControl(item, kind) {
   `;
 }
 
+/* Render a free-form text area for value-based checklist items */
 function renderTextControl(item, kind) {
   return `
     <label class="field full-field">
@@ -203,6 +221,7 @@ function renderTextControl(item, kind) {
   `;
 }
 
+/* Render optional wording guidance for checklist item selections */
 function renderDisplayedWording(item) {
   const rows = DISPLAYED_WORDING[item.id];
   if (!rows || !rows.length) return '';
@@ -219,6 +238,7 @@ function renderDisplayedWording(item) {
   `;
 }
 
+/* Wire UI controls for form behavior, saving, and photo handling */
 function bindEvents() {
   window.addEventListener('beforeinstallprompt', event => {
     event.preventDefault();
@@ -281,6 +301,7 @@ function bindEvents() {
   els.bottomBackupBtn.addEventListener('click', exportBackupJson);
 }
 
+/* Track unsaved changes and update status indicators */
 function isDirty() { return els.dirtyPill && !els.dirtyPill.classList.contains('saved'); }
 function markDirty(dirty) {
   els.dirtyPill.textContent = dirty ? 'Unsaved' : 'Saved';
@@ -292,6 +313,7 @@ function setStatus(message) {
   els.bottomOutputStatus.textContent = text;
 }
 
+/* Build the job object from current form values */
 function collectJobFromForm() {
   const job = currentJob || blankJob();
   job.updatedAt = new Date().toISOString();
@@ -302,14 +324,18 @@ function collectJobFromForm() {
   job.items = collectItemGroup('items', INSPECTION_ITEMS);
   job.inHouse = collectItemGroup('inHouse', IN_HOUSE_ITEMS);
   job.summaryNotes = els.summaryNotes.value.trim();
+
+  /* Reset signature properties for a new pre-signature packet */
   job.signatureDate = '';
   delete job.signatureMode;
   delete job.signatureName;
   delete job.signatureImage;
   delete job.remote;
+
   return job;
 }
 
+/* Collect item group values from the rendered checklist fields */
 function collectItemGroup(kind, list) {
   const out = {};
   list.forEach(item => {
@@ -322,6 +348,7 @@ function collectItemGroup(kind, list) {
   return out;
 }
 
+/* Render a saved job record back into the form */
 function hydrateForm(job) {
   currentJob = job;
   JOB_FIELDS.forEach(field => {
@@ -347,6 +374,7 @@ function hydrateItemGroup(kind, list, data) {
   });
 }
 
+/* Save current draft to IndexedDB and refresh UI state */
 async function saveCurrentDraft() {
   currentJob = collectJobFromForm();
   await putStore('jobs', currentJob);
@@ -356,6 +384,7 @@ async function saveCurrentDraft() {
   setStatus(`Saved draft at ${new Date().toLocaleTimeString()}.`);
 }
 
+/* Initialize IndexedDB if needed and hold a promise for later use */
 async function initDb() {
   dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -370,6 +399,7 @@ async function initDb() {
   await dbPromise;
 }
 
+/* Small helper wrapper for IndexedDB transactions */
 async function txStore(storeName, mode, callback) {
   const db = await dbPromise;
   return new Promise((resolve, reject) => {
@@ -403,12 +433,14 @@ async function getJob(id) {
   });
 }
 
+/* Populate the saved drafts sidebar with available jobs */
 async function loadDraftList() {
   const jobs = (await getAll('jobs')).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   if (!jobs.length) {
     els.jobList.innerHTML = '<p class="muted small">No saved drafts yet.</p>';
     return;
   }
+
   els.jobList.innerHTML = '';
   jobs.forEach(job => {
     const btn = document.createElement('button');
@@ -416,34 +448,41 @@ async function loadDraftList() {
     btn.className = 'draft-button';
     const title = [job.fields?.jobNumberPhase, job.fields?.customerName].filter(Boolean).join(' - ') || 'Untitled Checklist';
     btn.innerHTML = `<strong>${escapeHtml(title)}</strong><small>${escapeHtml(job.fields?.address || '')}</small><small>Updated ${new Date(job.updatedAt).toLocaleString()}</small>`;
+
     btn.addEventListener('click', async () => {
       if (isDirty() && !confirm('Load this draft? Unsaved changes will be lost.')) return;
       const full = await getJob(job.id);
       hydrateForm(full);
       await renderPhotos();
     });
+
     els.jobList.appendChild(btn);
   });
 }
 
+/* Return photos that belong to the current job, sorted by their sort key */
 async function getCurrentPhotos() {
   const all = await getAll('photos');
   return all.filter(photo => photo.jobId === currentJob.id).sort((a, b) => (a.sortKey || 0) - (b.sortKey || 0));
 }
 
+/* Add selected image files to the current job, converting them to resized JPEGs */
 async function addPhotoFiles(files) {
   if (!files.length) return;
   await saveCurrentDraft();
   setStatus(`Processing ${files.length} photo(s)...`);
+
   const existing = await getCurrentPhotos();
   let sortKey = existing.length ? Math.max(...existing.map(p => p.sortKey || 0)) + 1 : 1;
   let added = 0;
   let failed = 0;
+
   for (const file of files) {
     if (!isImageFile(file)) {
       failed++;
       continue;
     }
+
     try {
       const blob = await resizeToJpegBlob(file, 1800, 0.78);
       const dataUrl = await blobToDataUrl(blob);
@@ -464,26 +503,32 @@ async function addPhotoFiles(files) {
       failed++;
     }
   }
+
   await renderPhotos();
   await updateStorageStatus();
+
   if (added && failed) setStatus(`Added ${added} photo(s). ${failed} file(s) could not be imported.`);
   else if (added) setStatus(`Added ${added} photo(s).`);
   else setStatus('No photos were added. Try selecting JPEG or PNG images from the photo library.');
 }
 
+/* Render photo cards and wire photo controls */
 async function renderPhotos() {
   for (const url of photoUrls.values()) URL.revokeObjectURL(url);
   photoUrls.clear();
+
   const photos = await getCurrentPhotos();
   els.photoGrid.innerHTML = '';
   if (!photos.length) {
     els.photoGrid.innerHTML = '<p class="muted small">No photos added yet.</p>';
     return;
   }
+
   const template = document.getElementById('photoCardTemplate');
   photos.forEach((photo, index) => {
     const node = template.content.firstElementChild.cloneNode(true);
     const img = node.querySelector('img');
+
     if (photo.dataUrl) {
       img.src = photo.dataUrl;
     } else if (photo.blob) {
@@ -491,6 +536,7 @@ async function renderPhotos() {
       photoUrls.set(photo.id, url);
       img.src = url;
     }
+
     img.alt = photo.caption || photo.name || 'Job photo';
     const caption = node.querySelector('textarea');
     caption.value = photo.caption || '';
@@ -498,12 +544,14 @@ async function renderPhotos() {
       photo.caption = caption.value.trim();
       await putStore('photos', photo);
     }, 250));
+
     node.querySelector('.remove-photo').addEventListener('click', async () => {
       if (!confirm('Remove this photo?')) return;
       await deleteStore('photos', photo.id);
       await renderPhotos();
       await updateStorageStatus();
     });
+
     node.querySelector('.move-up').disabled = index === 0;
     node.querySelector('.move-down').disabled = index === photos.length - 1;
     node.querySelector('.move-up').addEventListener('click', () => swapPhotoSort(photo, photos[index - 1]));
@@ -512,6 +560,7 @@ async function renderPhotos() {
   });
 }
 
+/* Swap sort order of two photos and persist the change */
 async function swapPhotoSort(a, b) {
   const tmp = a.sortKey;
   a.sortKey = b.sortKey;
@@ -521,21 +570,25 @@ async function swapPhotoSort(a, b) {
   await renderPhotos();
 }
 
+/* Display approximate device storage usage if available */
 async function updateStorageStatus() {
   if (!navigator.storage?.estimate) {
     els.storageStatus.textContent = 'Photos are saved locally on this device.';
     return;
   }
+
   const est = await navigator.storage.estimate();
   els.storageStatus.textContent = `Device app storage used: ${formatBytes(est.usage || 0)}${est.quota ? ` of about ${formatBytes(est.quota)}` : ''}. Photos are limited by device/browser storage.`;
 }
 
+/* Generate the preconstruction PDF packet from current job data */
 async function generatePacket() {
   try {
     setStatus('Building PDF packet...');
     currentJob = collectJobFromForm();
     await putStore('jobs', currentJob);
     await loadDraftList();
+
     const photos = await getCurrentPhotos();
     const bytes = await buildPreconPacketPdf(currentJob, photos);
     const filename = packetFilename(currentJob);
@@ -565,6 +618,7 @@ async function exportBackupJson() {
   downloadBlob(new Blob([JSON.stringify({ job: currentJob, photos: backupPhotos, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' }), `${packetFilename(currentJob).replace(/\.pdf$/, '')}-backup.json`);
 }
 
+/* Build the PDF document structure for the preconstruction packet */
 async function buildPreconPacketPdf(job, photos) {
   const doc = { pages: [], logo: await loadPdfLogo() };
   await addChecklistPages(doc, job);
@@ -572,6 +626,7 @@ async function buildPreconPacketPdf(job, photos) {
   return buildPdf(doc);
 }
 
+/* Add the checklist pages to the PDF document */
 async function addChecklistPages(doc, job) {
   let page = newPdfPage(doc.logo);
   let y = startPdfPage(page, job, 'Pre-signature packet');
@@ -615,8 +670,10 @@ async function addChecklistPages(doc, job) {
   doc.pages.push(sigPage);
 }
 
+/* Create an empty PDF page container */
 function newPdfPage(logo = null) { return { commands: [], images: [], logo }; }
 
+/* Load and prepare the logo that is embedded in PDF pages */
 async function loadPdfLogo() {
   try {
     return await dataUrlToJpegImage(await blobToDataUrl(await fetch('assets/absolute-aluminum-logo.png').then(response => response.blob())), 520, 0.9);
@@ -626,11 +683,13 @@ async function loadPdfLogo() {
   }
 }
 
+/* Add the document header to each PDF page */
 function startPdfPage(page, job, subtitle = 'Pre-signature packet') {
   addHeader(page, 'PRE-CONSTRUCTION CHECKLIST', job, 28, subtitle);
   return 104;
 }
 
+/* Draw the PDF title header and metadata */
 function addHeader(page, title, job, yTop, subtitle = '') {
   rect(page, 32, yTop - 8, PAGE_W - 64, 68, PDF_COLORS.white);
   rectStroke(page, 32, yTop - 8, PAGE_W - 64, 68, PDF_COLORS.plum);
@@ -649,6 +708,7 @@ function sectionBar(page, title, y) {
   return y + 24;
 }
 
+/* Ensure enough space remains on the current PDF page or create a new page */
 function ensurePageSpace(doc, page, job, y, needed, subtitle) {
   if (y + needed <= 736) return { page, y, newPage: false };
   addFooter(page);
@@ -658,12 +718,14 @@ function ensurePageSpace(doc, page, job, y, needed, subtitle) {
   return { page: nextPage, y: nextY, newPage: true };
 }
 
+/* Draw the footer on a PDF page */
 function addFooter(page) {
   line(page, MARGIN, 758, PAGE_W - MARGIN, 758, PDF_COLORS.teal);
   text(page, 'Pre-Construction Checklist', MARGIN, 774, 7, 'F1', PDF_COLORS.teal);
   textRight(page, 'Photos follow signature page when included', PAGE_W - MARGIN, 774, 7, 'F1', PDF_COLORS.teal);
 }
 
+/* Helpers for filtering fields and items that should be printed */
 function filledJobFields(job) {
   return JOB_FIELDS.filter(field => hasPdfValue(job.fields?.[field.id]));
 }
@@ -685,6 +747,7 @@ function selectedWording(item, row) {
   return (DISPLAYED_WORDING[item.id] || []).filter(([sel]) => sel === selection);
 }
 
+/* Render job fields into the PDF in two columns */
 function addJobInfo(page, job, y, fields = filledJobFields(job)) {
   const colW = (PAGE_W - MARGIN * 2) / 2;
   fields.forEach((field, idx) => {
@@ -711,6 +774,7 @@ function itemRowHeight(item, row) {
   return Math.max(34, 22 + messageLines * 9);
 }
 
+/* Add a table of checklist items to the PDF */
 function addItemTable(doc, page, job, items, values, y, continuationTitle) {
   for (const item of items) {
     const row = values?.[item.id] || {};
@@ -740,6 +804,7 @@ function itemPdfMessage(item, row) {
   return itemDisplayValue(item, row);
 }
 
+/* Add summary notes block to the PDF */
 function addSummaryBlock(page, job, y) {
   const h = Math.min(128, Math.max(54, wrapText(job.summaryNotes || ' ', 116).length * 9 + 18));
   rectStroke(page, MARGIN, y, PAGE_W - MARGIN * 2, h, PDF_COLORS.teal);
@@ -747,6 +812,7 @@ function addSummaryBlock(page, job, y) {
   return y + h + 6;
 }
 
+/* Add the signature section to the PDF */
 function addSignatureBlock(page, job, y) {
   y = sectionBar(page, 'CUSTOMER ACKNOWLEDGMENT', y);
   wrappedText(page, 'By signing below, customer acknowledges the Pre-Construction Checklist and all included selections, notes, and attachments.', MARGIN, y + 6, PAGE_W - MARGIN * 2, 10, 13, 'F1');
@@ -757,8 +823,10 @@ function addSignatureBlock(page, job, y) {
   labelValue(page, 'Date', '', 330, y + 42, 160);
 }
 
+/* Add photo pages into the PDF, two photos per page */
 async function addPhotoPages(doc, job, photos) {
   if (!photos.length) return;
+
   let pageNum = 1;
   for (let i = 0; i < photos.length; i += 2) {
     const page = newPdfPage(doc.logo);
@@ -767,6 +835,7 @@ async function addPhotoPages(doc, job, photos) {
       { x: MARGIN, y: 126, w: PAGE_W - MARGIN * 2, h: 250 },
       { x: MARGIN, y: 424, w: PAGE_W - MARGIN * 2, h: 250 }
     ];
+
     for (let j = 0; j < 2 && i + j < photos.length; j++) {
       const photo = photos[i + j];
       const image = await photoToJpegImage(photo, 1700, 0.74);
@@ -776,12 +845,14 @@ async function addPhotoPages(doc, job, photos) {
       imageOnPage(page, image, slot.x + (slot.w - fit.w) / 2, slot.y + 10, fit.w, fit.h);
       wrappedText(page, photo.caption || `Photo ${i + j + 1}`, slot.x + 8, slot.y + slot.h - 20, slot.w - 16, 9, 11, 'F1', 2);
     }
+
     addFooter(page);
     doc.pages.push(page);
     pageNum++;
   }
 }
 
+/* Place an image object on a PDF page */
 function imageOnPage(page, image, xTop, yTop, w, h) {
   const name = `Im${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
   const imageObj = { ...image, name };
@@ -789,31 +860,41 @@ function imageOnPage(page, image, xTop, yTop, w, h) {
   page.commands.push(`q ${fmt(w)} 0 0 ${fmt(h)} ${fmt(xTop)} ${fmt(PAGE_H - yTop - h)} cm /${name} Do Q`);
 }
 
+/* PDF text drawing helpers */
 function text(page, value, x, yTop, size = 10, font = 'F1', color = null) {
   const command = `BT /${font} ${fmt(size)} Tf ${fmt(x)} ${fmt(PAGE_H - yTop)} Td (${escapePdfString(pdfCleanText(value))}) Tj ET`;
   page.commands.push(color ? `q ${pdfRgb(color)} rg ${command} Q` : command);
 }
-function textRight(page, value, rightX, yTop, size = 10, font = 'F1', color = null) { text(page, value, rightX - String(value).length * size * 0.52, yTop, size, font, color); }
+
+function textRight(page, value, rightX, yTop, size = 10, font = 'F1', color = null) {
+  text(page, value, rightX - String(value).length * size * 0.52, yTop, size, font, color);
+}
+
 function wrappedText(page, value, x, yTop, width, size = 10, lineHeight = 12, font = 'F1', maxLines = Infinity) {
   const chars = Math.max(12, Math.floor(width / (size * 0.52)));
   const lines = wrapText(value, chars).slice(0, maxLines);
   lines.forEach((lineText, index) => text(page, lineText, x, yTop + index * lineHeight, size, font));
   return yTop + lines.length * lineHeight;
 }
+
 function line(page, x1, y1Top, x2, y2Top, color = null) {
   const command = `${fmt(x1)} ${fmt(PAGE_H - y1Top)} m ${fmt(x2)} ${fmt(PAGE_H - y2Top)} l S`;
   page.commands.push(color ? `q ${pdfRgb(color)} RG ${command} Q` : command);
 }
+
 function rect(page, x, yTop, w, h, fill = 0.95) {
   const fillColor = Array.isArray(fill) ? `${pdfRgb(fill)} rg` : `${fmt(fill)} g`;
   page.commands.push(`q ${fillColor} ${fmt(x)} ${fmt(PAGE_H - yTop - h)} ${fmt(w)} ${fmt(h)} re f Q`);
 }
+
 function rectStroke(page, x, yTop, w, h, color = null) {
   const command = `${fmt(x)} ${fmt(PAGE_H - yTop - h)} ${fmt(w)} ${fmt(h)} re S`;
   page.commands.push(color ? `q ${pdfRgb(color)} RG ${command} Q` : command);
 }
+
 function pdfRgb(color) { return color.map(fmt).join(' '); }
 
+/* Convert the page and image model into a raw PDF file */
 function buildPdf(doc) {
   const images = [];
   doc.pages.forEach(page => page.images.forEach(img => images.push(img)));
@@ -827,6 +908,7 @@ function buildPdf(doc) {
   objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
   objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
   images.forEach(img => { objects[img.obj] = imageObject(img); });
+
   doc.pages.forEach(page => {
     const content = ['0 g', '0.7 w', ...page.commands].join('\n');
     objects[page.contentObj] = streamObject(asciiBytes(content));
@@ -837,12 +919,14 @@ function buildPdf(doc) {
   const chunks = [];
   const offsets = [0];
   pushAscii(chunks, '%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+
   for (let i = 1; i < objects.length; i++) {
     offsets[i] = byteLength(chunks);
     pushAscii(chunks, `${i} 0 obj\n`);
     if (objects[i] instanceof Uint8Array) chunks.push(objects[i]); else pushAscii(chunks, objects[i]);
     pushAscii(chunks, '\nendobj\n');
   }
+
   const xrefOffset = byteLength(chunks);
   pushAscii(chunks, `xref\n0 ${objects.length}\n0000000000 65535 f \n`);
   for (let i = 1; i < objects.length; i++) pushAscii(chunks, `${String(offsets[i]).padStart(10, '0')} 00000 n \n`);
@@ -850,6 +934,7 @@ function buildPdf(doc) {
   return concatBytes(chunks);
 }
 
+/* Encode an image object for PDF embedding */
 function imageObject(img) {
   return concatBytes([
     asciiBytes(`<< /Type /XObject /Subtype /Image /Width ${img.width} /Height ${img.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${img.bytes.length} >>\nstream\n`),
@@ -857,8 +942,12 @@ function imageObject(img) {
     asciiBytes('\nendstream')
   ]);
 }
-function streamObject(bytes) { return concatBytes([asciiBytes(`<< /Length ${bytes.length} >>\nstream\n`), bytes, asciiBytes('\nendstream')]); }
 
+function streamObject(bytes) {
+  return concatBytes([asciiBytes(`<< /Length ${bytes.length} >>\nstream\n`), bytes, asciiBytes('\nendstream')]);
+}
+
+/* Helper to detect image files by MIME type or extension */
 function isImageFile(file) {
   if (file.type && file.type.startsWith('image/')) return true;
   return /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(file.name || '');
@@ -892,17 +981,27 @@ async function resizeToJpegBlob(fileOrBlob, maxDim = 1800, quality = 0.78) {
     URL.revokeObjectURL(url);
   }
 }
-async function blobToJpegImage(blob, maxDim, quality) { return dataUrlToJpegImage(await blobToDataUrl(await resizeToJpegBlob(blob, maxDim, quality)), maxDim, quality); }
+
+/* Create a JPEG image object from a blob for PDF rendering */
+async function blobToJpegImage(blob, maxDim, quality) {
+  return dataUrlToJpegImage(await blobToDataUrl(await resizeToJpegBlob(blob, maxDim, quality)), maxDim, quality);
+}
+
+/* Convert stored photo data into a usable data URL string */
 async function photoToDataUrl(photo) {
   if (photo.dataUrl) return photo.dataUrl;
   if (photo.blob) return blobToDataUrl(photo.blob);
   throw new Error('Photo data is missing');
 }
+
+/* Convert a stored photo record into a JPEG image object for PDF output */
 async function photoToJpegImage(photo, maxDim, quality) {
   if (photo.dataUrl) return dataUrlToJpegImage(photo.dataUrl, maxDim, quality);
   if (photo.blob) return blobToJpegImage(photo.blob, maxDim, quality);
   throw new Error('Photo data is missing');
 }
+
+/* Load a data URL and produce a JPEG image object with dimensions */
 async function dataUrlToJpegImage(dataUrl, maxDim = 1600, quality = 0.82) {
   const img = await loadImage(dataUrl);
   const size = scaleDimensions(img.naturalWidth, img.naturalHeight, maxDim);
@@ -916,6 +1015,8 @@ async function dataUrlToJpegImage(dataUrl, maxDim = 1600, quality = 0.82) {
   const out = canvas.toDataURL('image/jpeg', quality);
   return { bytes: dataUrlToBytes(out), width: size.width, height: size.height };
 }
+
+/* Convert a canvas into a JPEG blob asynchronously */
 function canvasToJpegBlob(canvas, quality) {
   return new Promise((resolve, reject) => {
     canvas.toBlob(blob => {
@@ -939,22 +1040,129 @@ function loadImage(src) {
     img.src = src;
   });
 }
-function blobToDataUrl(blob) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(reader.error); reader.readAsDataURL(blob); }); }
-function dataUrlToBytes(dataUrl) { const bin = atob(dataUrl.split(',')[1]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); return bytes; }
-function scaleDimensions(width, height, maxDim) { const scale = Math.min(1, maxDim / Math.max(width, height)); return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) }; }
-function fitRect(w, h, maxW, maxH) { const scale = Math.min(maxW / w, maxH / h, 1); return { w: w * scale, h: h * scale }; }
 
-function registerServiceWorker() { if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service worker registration failed', err)); }
-function downloadBlob(blob, filename) { const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000); }
-function asciiBytes(str) { const bytes = new Uint8Array(str.length); for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i) & 0xff; return bytes; }
+/* Convert a Blob into a Data URL for use by the image loader */
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
+/* Convert a Data URL encoding into raw bytes */
+function dataUrlToBytes(dataUrl) {
+  const bin = atob(dataUrl.split(',')[1]);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
+}
+
+/* Scale dimensions proportionally so the larger side fits within maxDim */
+function scaleDimensions(width, height, maxDim) {
+  const scale = Math.min(1, maxDim / Math.max(width, height));
+  return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
+}
+
+/* Fit a rectangle into a bounding box while preserving aspect ratio */
+function fitRect(w, h, maxW, maxH) {
+  const scale = Math.min(maxW / w, maxH / h, 1);
+  return { w: w * scale, h: h * scale };
+}
+
+/* Register the service worker for offline use */
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service worker registration failed', err));
+  }
+}
+/* Download a Blob to the user's device */
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/* Convert a string to ASCII bytes for PDF building */
+function asciiBytes(str) {
+  const bytes = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i) & 0xff;
+  return bytes;
+}
+
 function pushAscii(chunks, str) { chunks.push(asciiBytes(str)); }
 function byteLength(chunks) { return chunks.reduce((total, chunk) => total + chunk.length, 0); }
-function concatBytes(chunks) { const out = new Uint8Array(byteLength(chunks)); let offset = 0; chunks.forEach(chunk => { out.set(chunk, offset); offset += chunk.length; }); return out; }
+function concatBytes(chunks) {
+  const out = new Uint8Array(byteLength(chunks));
+  let offset = 0;
+  chunks.forEach(chunk => {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  });
+  return out;
+}
+
+/* Format numeric values for PDF content streams */
 function fmt(n) { return Number(n).toFixed(2).replace(/\.00$/, ''); }
-function pdfCleanText(value) { return String(value ?? '').replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/[\u2013\u2014]/g, '-').replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '?'); }
-function escapePdfString(value) { return String(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)'); }
-function wrapText(value, maxChars) { const input = pdfCleanText(value || '').replace(/\s+/g, ' ').trim(); if (!input) return ['']; const words = input.split(' '); const lines = []; let lineText = ''; words.forEach(word => { if ((lineText + ' ' + word).trim().length > maxChars && lineText) { lines.push(lineText); lineText = word; } else { lineText = (lineText + ' ' + word).trim(); } }); if (lineText) lines.push(lineText); return lines; }
-function formatBytes(bytes) { if (!bytes) return '0 B'; const units = ['B', 'KB', 'MB', 'GB']; let n = bytes; let i = 0; while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; } return `${n.toFixed(n >= 10 || i === 0 ? 0 : 1)} ${units[i]}`; }
-function safeFilename(value) { return String(value || '').trim().replace(/[^a-z0-9-_]+/gi, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 60) || 'PreCon'; }
+/* Normalize text before embedding it into the PDF */
+function pdfCleanText(value) {
+  return String(value ?? '')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '?');
+}
+
+/* Escape special characters inside PDF strings */
+function escapePdfString(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+
+/* Wrap text to a maximum character width for PDF output */
+function wrapText(value, maxChars) {
+  const input = pdfCleanText(value || '').replace(/\s+/g, ' ').trim();
+  if (!input) return [''];
+  const words = input.split(' ');
+  const lines = [];
+  let lineText = '';
+  words.forEach(word => {
+    if ((lineText + ' ' + word).trim().length > maxChars && lineText) {
+      lines.push(lineText);
+      lineText = word;
+    } else {
+      lineText = (lineText + ' ' + word).trim();
+    }
+  });
+  if (lineText) lines.push(lineText);
+  return lines;
+}
+/* Format bytes as a human-readable string for UI display */
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let n = bytes;
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  return `${n.toFixed(n >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+/* Create a filename safe for download by stripping invalid characters */
+function safeFilename(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[^a-z0-9-_]+/gi, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60) || 'PreCon';
+}
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); }
 function debounce(fn, delay) { let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); }; }
