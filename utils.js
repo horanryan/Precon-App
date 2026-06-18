@@ -1,0 +1,111 @@
+'use strict';
+
+function createId(prefix) {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+function registerServiceWorker() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service worker registration failed', err));
+  }
+}
+/* Download a Blob to the user's device */
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+/* Convert a string to ASCII bytes for PDF building */
+function asciiBytes(str) {
+  const bytes = new Uint8Array(str.length);
+  for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i) & 0xff;
+  return bytes;
+}
+
+function pushAscii(chunks, str) { chunks.push(asciiBytes(str)); }
+function byteLength(chunks) { return chunks.reduce((total, chunk) => total + chunk.length, 0); }
+function concatBytes(chunks) {
+  const out = new Uint8Array(byteLength(chunks));
+  let offset = 0;
+  chunks.forEach(chunk => {
+    out.set(chunk, offset);
+    offset += chunk.length;
+  });
+  return out;
+}
+
+/* Format numeric values for PDF content streams */
+function fmt(n) { return Number(n).toFixed(2).replace(/\.00$/, ''); }
+/* Normalize text before embedding it into the PDF */
+function pdfCleanText(value) {
+  return String(value ?? '')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u2013\u2014]/g, '-')
+    .replace(/[^\x09\x0A\x0D\x20-\x7E]/g, '?');
+}
+
+/* Escape special characters inside PDF strings */
+function escapePdfString(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+}
+
+/* Wrap text to a maximum character width for PDF output */
+function wrapText(value, maxChars) {
+  const input = pdfCleanText(value || '').replace(/\s+/g, ' ').trim();
+  if (!input) return [''];
+  const words = input.split(' ');
+  const lines = [];
+  let lineText = '';
+  words.forEach(word => {
+    if ((lineText + ' ' + word).trim().length > maxChars && lineText) {
+      lines.push(lineText);
+      lineText = word;
+    } else {
+      lineText = (lineText + ' ' + word).trim();
+    }
+  });
+  if (lineText) lines.push(lineText);
+  return lines;
+}
+/* Format bytes as a human-readable string for UI display */
+function formatBytes(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let n = bytes;
+  let i = 0;
+  while (n >= 1024 && i < units.length - 1) {
+    n /= 1024;
+    i++;
+  }
+  return `${n.toFixed(n >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+function formatDateForPdf(value) {
+  if (!value) return '';
+  const [year, month, day] = String(value).split('-').map(Number);
+  if (!year || !month || !day) return value;
+  return `${month}/${day}/${year}`;
+}
+
+/* Create a filename safe for download by stripping invalid characters */
+function safeFilename(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[^a-z0-9-_]+/gi, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60) || 'PreCon';
+}
+function escapeHtml(value) {
+   return String(value ?? '')
+    .replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); 
+}
+function debounce(fn, delay) {
+   let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); }; }
