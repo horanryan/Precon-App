@@ -127,6 +127,14 @@ const IN_HOUSE_ITEMS = [
   { id: 'noc', label: 'NOC', options: ['', 'Needs Signature/Submittal', 'Signed and Submitted', 'N/A'] }
 ];
 
+const REQUIRED_ELEMENT_IDS = [
+  'installBtn', 'newJobBtn', 'saveBtn', 'jobList', 'storageStatus', 'currentJobTitle', 'dirtyPill',
+  'jobInfoFields', 'inspectionItems', 'inHouseItems', 'summaryNotes', 'addPhotosBtn', 'photoInput', 'photoGrid',
+  'refreshPhotosBtn', 'clearPhotosBtn', 'signedPdfBtn', 'outputStatus',
+  'bottomSaveBtn', 'bottomSignedPdfBtn', 'bottomOutputStatus',
+  'checklistForm'
+];
+
 let dbPromise;
 let currentJob = blankJob();
 let deferredInstallPrompt = null;
@@ -135,33 +143,36 @@ const photoUrls = new Map();
 
 /* Initialize app when DOM is ready */
 window.addEventListener('DOMContentLoaded', async () => {
-  cacheEls();
-  renderFormShell();
-  bindEvents();
-  await initDb();
-  hydrateForm(currentJob);
-  await loadDraftList();
-  await renderPhotos();
-  await updateStorageStatus();
-  registerServiceWorker();
+  try {
+    cacheEls();
+    renderFormShell();
+    bindEvents();
+    await initDb();
+    hydrateForm(currentJob);
+    await loadDraftList();
+    await renderPhotos();
+    await updateStorageStatus();
+    registerServiceWorker();
+  } catch (err) {
+    console.error('App initialization failed', err);
+    setStatus(`App could not start: ${err.message || 'unknown error'}`);
+  }
 });
 
 /* Cache references to DOM elements for faster access */
 function cacheEls() {
-  [
-    'installBtn', 'newJobBtn', 'saveBtn', 'jobList', 'storageStatus', 'currentJobTitle', 'dirtyPill',
-    'jobInfoFields', 'inspectionItems', 'inHouseItems', 'summaryNotes', 'addPhotosBtn', 'photoInput', 'photoGrid',
-    'refreshPhotosBtn', 'clearPhotosBtn', 'signedPdfBtn', 'backupBtn', 'outputStatus',
-    'bottomSaveBtn', 'bottomSignedPdfBtn', 'bottomBackupBtn', 'bottomOutputStatus',
-    'checklistForm'
-  ].forEach(id => { els[id] = document.getElementById(id); });
+  REQUIRED_ELEMENT_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) throw new Error(`Missing required element #${id}`);
+    els[id] = el;
+  });
 }
 
 /* Create a new blank job object with standard metadata */
 function blankJob() {
   const today = new Date().toISOString().slice(0, 10);
   return {
-    id: crypto.randomUUID ? crypto.randomUUID() : `job-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    id: createId('job'),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     fields: {},
@@ -170,6 +181,11 @@ function blankJob() {
     summaryNotes: '',
     signatureDate: today
   };
+}
+
+function createId(prefix) {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 /* Build the form UI from the checklist definitions */
@@ -262,7 +278,7 @@ function bindEvents() {
     markDirty(false);
   });
 
-  els.saveBtn.addEventListener('click', saveCurrentDraft);
+  bindAsyncClick(els.saveBtn, saveCurrentDraft, 'Save failed');
   els.checklistForm.addEventListener('input', () => markDirty(true));
   els.checklistForm.addEventListener('change', () => markDirty(true));
 
@@ -284,21 +300,35 @@ function bindEvents() {
     }
   });
 
-  els.refreshPhotosBtn.addEventListener('click', renderPhotos);
+  bindAsyncClick(els.refreshPhotosBtn, renderPhotos, 'Photo refresh failed');
   els.clearPhotosBtn.addEventListener('click', async () => {
     if (!confirm('Remove every photo from this draft?')) return;
-    const photos = await getCurrentPhotos();
-    for (const photo of photos) await deleteStore('photos', photo.id);
-    await renderPhotos();
-    await updateStorageStatus();
-    markDirty(true);
+    try {
+      const photos = await getCurrentPhotos();
+      for (const photo of photos) await deleteStore('photos', photo.id);
+      await renderPhotos();
+      await updateStorageStatus();
+      markDirty(true);
+    } catch (err) {
+      console.error('Photo clearing failed', err);
+      setStatus(`Could not clear photos: ${err.message || 'unknown error'}`);
+    }
   });
 
   els.signedPdfBtn.addEventListener('click', generatePacket);
-  els.backupBtn.addEventListener('click', exportBackupJson);
-  els.bottomSaveBtn.addEventListener('click', saveCurrentDraft);
+  bindAsyncClick(els.bottomSaveBtn, saveCurrentDraft, 'Save failed');
   els.bottomSignedPdfBtn.addEventListener('click', generatePacket);
-  els.bottomBackupBtn.addEventListener('click', exportBackupJson);
+}
+
+function bindAsyncClick(el, action, label) {
+  el.addEventListener('click', async () => {
+    try {
+      await action();
+    } catch (err) {
+      console.error(label, err);
+      setStatus(`${label}: ${err.message || 'unknown error'}`);
+    }
+  });
 }
 
 /* Track unsaved changes and update status indicators */
@@ -309,8 +339,8 @@ function markDirty(dirty) {
 }
 function setStatus(message) {
   const text = message || '';
-  els.outputStatus.textContent = text;
-  els.bottomOutputStatus.textContent = text;
+  if (els.outputStatus) els.outputStatus.textContent = text;
+  if (els.bottomOutputStatus) els.bottomOutputStatus.textContent = text;
 }
 
 /* Build the job object from current form values */
@@ -325,24 +355,28 @@ function collectJobFromForm() {
   job.inHouse = collectItemGroup('inHouse', IN_HOUSE_ITEMS);
   job.summaryNotes = els.summaryNotes.value.trim();
 
-  /* Reset signature properties for a new pre-signature packet */
+  resetSignatureFields(job);
+
+  return job;
+}
+
+function resetSignatureFields(job) {
   job.signatureDate = '';
   delete job.signatureMode;
   delete job.signatureName;
   delete job.signatureImage;
   delete job.remote;
-
-  return job;
 }
 
 /* Collect item group values from the rendered checklist fields */
 function collectItemGroup(kind, list) {
   const out = {};
   list.forEach(item => {
+    const el = getItemControl(kind, item);
     if (item.options) {
-      out[item.id] = { selection: document.querySelector(`[data-kind="${kind}"][data-id="${item.id}"][data-prop="selection"]`)?.value || '' };
+      out[item.id] = { selection: el?.value || '' };
     } else {
-      out[item.id] = { value: document.querySelector(`[data-kind="${kind}"][data-id="${item.id}"][data-prop="value"]`)?.value.trim() || '' };
+      out[item.id] = { value: el?.value.trim() || '' };
     }
   });
   return out;
@@ -364,14 +398,19 @@ function hydrateForm(job) {
 function hydrateItemGroup(kind, list, data) {
   list.forEach(item => {
     const row = data[item.id] || {};
+    const el = getItemControl(kind, item);
+    if (!el) return;
     if (item.options) {
-      const el = document.querySelector(`[data-kind="${kind}"][data-id="${item.id}"][data-prop="selection"]`);
-      if (el) el.value = item.options.includes(row.selection) ? row.selection : '';
+      el.value = item.options.includes(row.selection) ? row.selection : '';
     } else {
-      const el = document.querySelector(`[data-kind="${kind}"][data-id="${item.id}"][data-prop="value"]`);
-      if (el) el.value = row.value || '';
+      el.value = row.value || '';
     }
   });
+}
+
+function getItemControl(kind, item) {
+  const prop = item.options ? 'selection' : 'value';
+  return document.querySelector(`[data-kind="${kind}"][data-id="${item.id}"][data-prop="${prop}"]`);
 }
 
 /* Save current draft to IndexedDB and refresh UI state */
@@ -407,8 +446,14 @@ async function txStore(storeName, mode, callback) {
     const store = tx.objectStore(storeName);
     let result;
     tx.oncomplete = () => resolve(result);
-    tx.onerror = () => reject(tx.error);
-    result = callback(store);
+    tx.onabort = tx.onerror = () => reject(tx.error || new Error(`IndexedDB transaction failed for ${storeName}`));
+
+    try {
+      result = callback(store);
+    } catch (err) {
+      tx.abort();
+      reject(err);
+    }
   });
 }
 
@@ -451,9 +496,15 @@ async function loadDraftList() {
 
     btn.addEventListener('click', async () => {
       if (isDirty() && !confirm('Load this draft? Unsaved changes will be lost.')) return;
-      const full = await getJob(job.id);
-      hydrateForm(full);
-      await renderPhotos();
+      try {
+        const full = await getJob(job.id);
+        if (!full) throw new Error('Saved draft could not be found.');
+        hydrateForm(full);
+        await renderPhotos();
+      } catch (err) {
+        console.error('Draft load failed', err);
+        setStatus(`Could not load draft: ${err.message || 'unknown error'}`);
+      }
     });
 
     els.jobList.appendChild(btn);
@@ -487,7 +538,7 @@ async function addPhotoFiles(files) {
       const blob = await resizeToJpegBlob(file, 1800, 0.78);
       const dataUrl = await blobToDataUrl(blob);
       await putStore('photos', {
-        id: crypto.randomUUID ? crypto.randomUUID() : `photo-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        id: createId('photo'),
         jobId: currentJob.id,
         sortKey: sortKey++,
         name: file.name || 'photo.jpg',
@@ -541,15 +592,25 @@ async function renderPhotos() {
     const caption = node.querySelector('textarea');
     caption.value = photo.caption || '';
     caption.addEventListener('input', debounce(async () => {
-      photo.caption = caption.value.trim();
-      await putStore('photos', photo);
+      try {
+        photo.caption = caption.value.trim();
+        await putStore('photos', photo);
+      } catch (err) {
+        console.error('Photo caption save failed', err);
+        setStatus(`Could not save photo caption: ${err.message || 'unknown error'}`);
+      }
     }, 250));
 
     node.querySelector('.remove-photo').addEventListener('click', async () => {
       if (!confirm('Remove this photo?')) return;
-      await deleteStore('photos', photo.id);
-      await renderPhotos();
-      await updateStorageStatus();
+      try {
+        await deleteStore('photos', photo.id);
+        await renderPhotos();
+        await updateStorageStatus();
+      } catch (err) {
+        console.error('Photo removal failed', err);
+        setStatus(`Could not remove photo: ${err.message || 'unknown error'}`);
+      }
     });
 
     node.querySelector('.move-up').disabled = index === 0;
@@ -608,16 +669,6 @@ function packetFilename(job) {
   return `${jobNum}-${customer}-PreConstruction-PRE-SIGNATURE.pdf`;
 }
 
-async function exportBackupJson() {
-  await saveCurrentDraft();
-  const photos = await getCurrentPhotos();
-  const backupPhotos = [];
-  for (const photo of photos) {
-    backupPhotos.push({ id: photo.id, name: photo.name, caption: photo.caption, sortKey: photo.sortKey, createdAt: photo.createdAt, dataUrl: await photoToDataUrl(photo) });
-  }
-  downloadBlob(new Blob([JSON.stringify({ job: currentJob, photos: backupPhotos, exportedAt: new Date().toISOString() }, null, 2)], { type: 'application/json' }), `${packetFilename(currentJob).replace(/\.pdf$/, '')}-backup.json`);
-}
-
 /* Build the PDF document structure for the preconstruction packet */
 async function buildPreconPacketPdf(job, photos) {
   const doc = { pages: [], logo: await loadPdfLogo() };
@@ -639,24 +690,21 @@ async function addChecklistPages(doc, job) {
 
   const inspectionItems = filledItems(INSPECTION_ITEMS, job.items);
   if (inspectionItems.length) {
-    y = ensurePageSpace(doc, page, job, y + 6, 48, 'Inspection Items continued');
-    page = y.page;
-    y = sectionBar(page, 'INSPECTION ITEMS', y.y);
+    ({ page, y } = ensurePageSpace(doc, page, job, y + 6, 48, 'Inspection Items continued'));
+    y = sectionBar(page, 'INSPECTION ITEMS', y);
     ({ page, y } = addItemTable(doc, page, job, inspectionItems, job.items, y, 'Inspection Items continued'));
   }
 
   const inHouseItems = filledItems(IN_HOUSE_ITEMS, job.inHouse);
   if (inHouseItems.length) {
-    y = ensurePageSpace(doc, page, job, y + 8, 54, 'In-House Use continued');
-    page = y.page;
-    y = sectionBar(page, 'IN-HOUSE USE', y.y);
+    ({ page, y } = ensurePageSpace(doc, page, job, y + 8, 54, 'In-House Use continued'));
+    y = sectionBar(page, 'IN-HOUSE USE', y);
     ({ page, y } = addItemTable(doc, page, job, inHouseItems, job.inHouse, y, 'In-House Use continued'));
   }
 
   if (hasPdfValue(job.summaryNotes)) {
-    y = ensurePageSpace(doc, page, job, y + 8, 110, 'Summary');
-    page = y.page;
-    y = sectionBar(page, 'SUMMARY NOTES', y.y);
+    ({ page, y } = ensurePageSpace(doc, page, job, y + 8, 110, 'Summary'));
+    y = sectionBar(page, 'SUMMARY NOTES', y);
     y = addSummaryBlock(page, job, y);
   }
 
@@ -671,7 +719,7 @@ async function addChecklistPages(doc, job) {
 }
 
 /* Create an empty PDF page container */
-function newPdfPage(logo = null) { return { commands: [], images: [], logo }; }
+function newPdfPage(logo = null) { return { commands: [], images: [], annotations: [], logo }; }
 
 /* Load and prepare the logo that is embedded in PDF pages */
 async function loadPdfLogo() {
@@ -817,10 +865,23 @@ function addSignatureBlock(page, job, y) {
   y = sectionBar(page, 'CUSTOMER ACKNOWLEDGMENT', y);
   wrappedText(page, 'By signing below, customer acknowledges the Pre-Construction Checklist and all included selections, notes, and attachments.', MARGIN, y + 6, PAGE_W - MARGIN * 2, 10, 13, 'F1');
   y += 86;
+  addSignatureField(page, 'CustomerSignature', MARGIN, y - 34, 300, 34);
   line(page, MARGIN, y, MARGIN + 300, y, PDF_COLORS.teal);
   text(page, 'Customer Signature', MARGIN, y + 16, 8, 'F2', PDF_COLORS.plum);
   labelValue(page, 'Customer Printed Name', job.fields?.customerName || '', MARGIN, y + 42, 250);
   labelValue(page, 'Date', '', 330, y + 42, 160);
+}
+
+function addSignatureField(page, name, xTop, yTop, w, h) {
+  page.annotations.push({
+    type: 'signature',
+    name,
+    rect: pdfRectFromTopLeft(xTop, yTop, w, h)
+  });
+}
+
+function pdfRectFromTopLeft(xTop, yTop, w, h) {
+  return [xTop, PAGE_H - yTop - h, xTop + w, PAGE_H - yTop];
 }
 
 /* Add photo pages into the PDF, two photos per page */
@@ -901,19 +962,29 @@ function buildPdf(doc) {
   let nextObj = 5;
   images.forEach(img => { img.obj = nextObj++; });
   doc.pages.forEach(page => { page.contentObj = nextObj++; page.pageObj = nextObj++; });
+  const annotations = [];
+  doc.pages.forEach(page => {
+    page.annotations.forEach(annotation => {
+      annotation.obj = nextObj++;
+      annotation.pageObj = page.pageObj;
+      annotations.push(annotation);
+    });
+  });
 
   const objects = [];
-  objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+  objects[1] = catalogObject(annotations);
   objects[2] = `<< /Type /Pages /Kids [${doc.pages.map(p => `${p.pageObj} 0 R`).join(' ')}] /Count ${doc.pages.length} >>`;
   objects[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
   objects[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
   images.forEach(img => { objects[img.obj] = imageObject(img); });
+  annotations.forEach(annotation => { objects[annotation.obj] = annotationObject(annotation); });
 
   doc.pages.forEach(page => {
     const content = ['0 g', '0.7 w', ...page.commands].join('\n');
     objects[page.contentObj] = streamObject(asciiBytes(content));
     const xObjects = page.images.length ? `/XObject << ${page.images.map(img => `/${img.name} ${img.obj} 0 R`).join(' ')} >>` : '';
-    objects[page.pageObj] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> ${xObjects} >> /Contents ${page.contentObj} 0 R >>`;
+    const annots = page.annotations.length ? `/Annots [${page.annotations.map(annotation => `${annotation.obj} 0 R`).join(' ')}]` : '';
+    objects[page.pageObj] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> ${xObjects} >> ${annots} /Contents ${page.contentObj} 0 R >>`;
   });
 
   const chunks = [];
@@ -932,6 +1003,21 @@ function buildPdf(doc) {
   for (let i = 1; i < objects.length; i++) pushAscii(chunks, `${String(offsets[i]).padStart(10, '0')} 00000 n \n`);
   pushAscii(chunks, `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
   return concatBytes(chunks);
+}
+
+function catalogObject(annotations) {
+  const signatureFields = annotations.filter(annotation => annotation.type === 'signature');
+  if (!signatureFields.length) return '<< /Type /Catalog /Pages 2 0 R >>';
+  return `<< /Type /Catalog /Pages 2 0 R /AcroForm << /Fields [${signatureFields.map(field => `${field.obj} 0 R`).join(' ')}] /SigFlags 3 /NeedAppearances true /DR << /Font << /Helv 3 0 R >> >> /DA (/Helv 0 Tf 0 g) >> >>`;
+}
+
+function annotationObject(annotation) {
+  if (annotation.type === 'signature') return signatureAnnotationObject(annotation);
+  throw new Error(`Unsupported PDF annotation type: ${annotation.type}`);
+}
+
+function signatureAnnotationObject(annotation) {
+  return `<< /Type /Annot /Subtype /Widget /FT /Sig /T (${escapePdfString(annotation.name)}) /Rect [${annotation.rect.map(fmt).join(' ')}] /F 4 /P ${annotation.pageObj} 0 R /H /I /MK << /BC [0 0.557 0.690] /BG [1 1 1] >> >>`;
 }
 
 /* Encode an image object for PDF embedding */

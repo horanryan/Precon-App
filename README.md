@@ -15,7 +15,6 @@ It includes:
 - Local customer signature capture
 - Remote-signature packet generation
 - Actual browser-side PDF generation with photo pages appended to the end
-- Backup JSON export
 
 The uploaded original PDF is included at:
 
