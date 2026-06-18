@@ -134,6 +134,10 @@ button.full { width: 100%; margin-bottom: .75rem; }
 .card h2 { margin: 0 0 1rem; color: var(--blue); }
 .compact-card { position: sticky; top: 124px; }
 .hero-card { border-top: 5px solid var(--lime); }
+.document-type-field {
+  max-width: 420px;
+  margin-bottom: 1rem;
+}
 
 .hero-row,
 .section-heading-row {

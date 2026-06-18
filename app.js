@@ -127,9 +127,82 @@ const IN_HOUSE_ITEMS = [
   { id: 'noc', label: 'NOC', options: ['', 'Needs Signature/Submittal', 'Signed and Submitted', 'N/A'] }
 ];
 
+const QC_JOB_FIELDS = [
+  { id: 'customerName', label: 'Customer Name', type: 'text' },
+  { id: 'address', label: 'Address', type: 'text' },
+  { id: 'jobNumberPhase', label: 'Job # and Phase', type: 'text' },
+  { id: 'qualityControlDate', label: 'Quality Control Date', type: 'date' },
+  { id: 'qualityControlInspector', label: 'Quality Control Inspector', type: 'text' },
+  { id: 'crewLead', label: 'Crew Lead', type: 'text' },
+  { id: 'projectType', label: 'Project Type', type: 'text' },
+  { id: 'permitNumber', label: 'Permit #', type: 'text' }
+];
+
+const QC_INSPECTION_ITEMS = [
+  { id: 'siteCleanliness', label: 'Site Cleanliness', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
+  { id: 'frameAlignment', label: 'Frame Alignment / Plumb', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
+  { id: 'fasteners', label: 'Fasteners Installed Correctly', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
+  { id: 'screenInstall', label: 'Screen Install Quality', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
+  { id: 'doorsHardware', label: 'Doors / Hardware Operation', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
+  { id: 'gutterDrainage', label: 'Gutter / Drainage Check', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
+  { id: 'sealantCaulking', label: 'Sealant / Caulking', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
+  { id: 'paintFinish', label: 'Paint / Finish Condition', options: ['', 'Pass', 'Needs Correction', 'N/A'] },
+  { id: 'customerWalkthrough', label: 'Customer Walkthrough Complete', options: ['', 'Yes', 'No', 'N/A'] }
+];
+
+const QC_CORRECTIVE_ITEMS = [
+  { id: 'openItems', label: 'Open Correction Items', input: 'text' },
+  { id: 'assignedTo', label: 'Assigned To', input: 'text' },
+  { id: 'targetCompletionDate', label: 'Target Completion Date', input: 'text' },
+  { id: 'followUpRequired', label: 'Follow-Up Required', options: ['', 'Yes', 'No'] },
+  { id: 'finalQcStatus', label: 'Final QC Status', options: ['', 'Passed', 'Passed With Corrections', 'Failed / Needs Return Visit'] }
+];
+
+const DOCUMENT_TYPES = {
+  precon: {
+    id: 'precon',
+    label: 'Pre-Construction Checklist',
+    shortLabel: 'Pre-Con',
+    title: 'Pre-Construction Checklist',
+    pdfTitle: 'PRE-CONSTRUCTION CHECKLIST',
+    filenameLabel: 'PreConstruction',
+    defaultFilename: 'PreCon',
+    summaryPlaceholder: 'Enter pre-construction summary notes...',
+    footerNote: 'Photos follow signature page when included',
+    signatureText: 'By signing below, customer acknowledges the Pre-Construction Checklist and all included selections, notes, and attachments.',
+    fields: JOB_FIELDS,
+    displayedWording: DISPLAYED_WORDING,
+    groups: [
+      { key: 'items', title: 'Inspection Items', pdfTitle: 'INSPECTION ITEMS', continuedTitle: 'Inspection Items continued', items: INSPECTION_ITEMS },
+      { key: 'inHouse', title: 'In-House Use', pdfTitle: 'IN-HOUSE USE', continuedTitle: 'In-House Use continued', items: IN_HOUSE_ITEMS }
+    ]
+  },
+  qualityControl: {
+    id: 'qualityControl',
+    label: 'Quality Control Document',
+    shortLabel: 'Quality Control',
+    title: 'Quality Control Document',
+    pdfTitle: 'QUALITY CONTROL DOCUMENT',
+    filenameLabel: 'QualityControl',
+    defaultFilename: 'QualityControl',
+    summaryPlaceholder: 'Enter quality control summary notes...',
+    footerNote: 'Photos follow signature page when included',
+    signatureText: 'By signing below, customer acknowledges the Quality Control document and all included observations, correction items, notes, and attachments.',
+    fields: QC_JOB_FIELDS,
+    displayedWording: {},
+    groups: [
+      { key: 'items', title: 'Quality Control Checks', pdfTitle: 'QUALITY CONTROL CHECKS', continuedTitle: 'Quality Control Checks continued', items: QC_INSPECTION_ITEMS },
+      { key: 'inHouse', title: 'Corrections / Follow-Up', pdfTitle: 'CORRECTIONS / FOLLOW-UP', continuedTitle: 'Corrections / Follow-Up continued', items: QC_CORRECTIVE_ITEMS }
+    ]
+  }
+};
+
+const DEFAULT_DOCUMENT_TYPE = 'precon';
+
 const REQUIRED_ELEMENT_IDS = [
   'installBtn', 'newJobBtn', 'saveBtn', 'jobList', 'storageStatus', 'currentJobTitle', 'dirtyPill',
-  'jobInfoFields', 'inspectionItems', 'inHouseItems', 'summaryNotes', 'addPhotosBtn', 'photoInput', 'photoGrid',
+  'documentTypeSelect', 'jobInfoFields', 'inspectionSectionTitle', 'inspectionItems', 'inHouseSectionTitle', 'inHouseItems',
+  'summaryNotes', 'addPhotosBtn', 'photoInput', 'photoGrid',
   'refreshPhotosBtn', 'clearPhotosBtn', 'signedPdfBtn', 'outputStatus',
   'typedSignatureName', 'useTypedSignatureBtn', 'signatureCanvas', 'clearSignatureBtn', 'signatureStatus',
   'bottomSaveBtn', 'bottomSignedPdfBtn', 'bottomOutputStatus',
@@ -150,10 +223,11 @@ let signatureTypedName = '';
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     cacheEls();
+    populateDocumentTypeSelect();
     renderFormShell();
     bindEvents();
     await initDb();
-    hydrateForm(currentJob);
+    hydrateForm(normalizeJob(currentJob));
     await loadDraftList();
     await renderPhotos();
     await updateStorageStatus();
@@ -178,6 +252,7 @@ function blankJob() {
   const today = new Date().toISOString().slice(0, 10);
   return {
     id: createId('job'),
+    documentType: DEFAULT_DOCUMENT_TYPE,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     fields: {},
@@ -193,16 +268,45 @@ function createId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function getDocumentDefinition(type) {
+  return DOCUMENT_TYPES[type] || DOCUMENT_TYPES[DEFAULT_DOCUMENT_TYPE];
+}
+
+function activeDocument() {
+  return getDocumentDefinition(currentJob?.documentType);
+}
+
+function normalizeJob(job) {
+  const out = job || blankJob();
+  out.documentType = getDocumentDefinition(out.documentType).id;
+  out.fields = out.fields || {};
+  out.items = out.items || {};
+  out.inHouse = out.inHouse || {};
+  out.summaryNotes = out.summaryNotes || '';
+  return out;
+}
+
+function populateDocumentTypeSelect() {
+  els.documentTypeSelect.innerHTML = Object.values(DOCUMENT_TYPES)
+    .map(doc => `<option value="${doc.id}">${escapeHtml(doc.label)}</option>`)
+    .join('');
+}
+
 /* Build the form UI from the checklist definitions */
 function renderFormShell() {
-  els.jobInfoFields.innerHTML = JOB_FIELDS.map(field => `
+  const doc = activeDocument();
+  els.documentTypeSelect.value = doc.id;
+  els.inspectionSectionTitle.textContent = doc.groups[0]?.title || 'Document Items';
+  els.inHouseSectionTitle.textContent = doc.groups[1]?.title || 'Additional Items';
+  els.summaryNotes.placeholder = doc.summaryPlaceholder || 'Enter summary notes...';
+  els.jobInfoFields.innerHTML = doc.fields.map(field => `
     <label class="field ${field.id === 'address' ? 'full-field' : ''}">
       <span>${escapeHtml(field.label)}</span>
       <input id="field_${field.id}" data-kind="job-field" data-id="${field.id}" type="${field.type || 'text'}">
     </label>
   `).join('');
-  els.inspectionItems.innerHTML = INSPECTION_ITEMS.map(item => renderChecklistItem(item, 'items')).join('');
-  els.inHouseItems.innerHTML = IN_HOUSE_ITEMS.map(item => renderChecklistItem(item, 'inHouse')).join('');
+  els.inspectionItems.innerHTML = (doc.groups[0]?.items || []).map(item => renderChecklistItem(item, doc.groups[0].key)).join('');
+  els.inHouseItems.innerHTML = (doc.groups[1]?.items || []).map(item => renderChecklistItem(item, doc.groups[1].key)).join('');
 }
 
 /* Render a single checklist item card */
@@ -244,7 +348,7 @@ function renderTextControl(item, kind) {
 
 /* Render optional wording guidance for checklist item selections */
 function renderDisplayedWording(item) {
-  const rows = DISPLAYED_WORDING[item.id];
+  const rows = activeDocument().displayedWording?.[item.id];
   if (!rows || !rows.length) return '';
   return `
     <div class="displayed-wording">
@@ -276,11 +380,33 @@ function bindEvents() {
   });
 
   els.newJobBtn.addEventListener('click', async () => {
-    if (isDirty() && !confirm('Start a new checklist? Unsaved changes will be lost.')) return;
+    if (isDirty() && !confirm('Start a new document? Unsaved changes will be lost.')) return;
     currentJob = blankJob();
+    currentJob.documentType = els.documentTypeSelect.value || DEFAULT_DOCUMENT_TYPE;
     hydrateForm(currentJob);
     await renderPhotos();
     markDirty(false);
+  });
+
+  els.documentTypeSelect.addEventListener('change', async () => {
+    const nextType = els.documentTypeSelect.value || DEFAULT_DOCUMENT_TYPE;
+    if (nextType === currentJob.documentType) return;
+    if (isDirty() && !confirm('Switch document type? Unsaved changes in this draft will be lost.')) {
+      els.documentTypeSelect.value = currentJob.documentType;
+      return;
+    }
+
+    const previous = collectJobFromForm(currentJob.documentType);
+    const nextJob = blankJob();
+    nextJob.documentType = nextType;
+    ['customerName', 'address', 'email', 'phone', 'jobNumberPhase'].forEach(id => {
+      if (previous.fields?.[id]) nextJob.fields[id] = previous.fields[id];
+    });
+    currentJob = nextJob;
+    renderFormShell();
+    hydrateForm(currentJob);
+    await renderPhotos();
+    markDirty(true);
   });
 
   bindAsyncClick(els.saveBtn, saveCurrentDraft, 'Save failed');
@@ -524,15 +650,18 @@ function setStatus(message) {
 }
 
 /* Build the job object from current form values */
-function collectJobFromForm() {
-  const job = currentJob || blankJob();
+function collectJobFromForm(documentTypeOverride = null) {
+  const job = normalizeJob(currentJob || blankJob());
+  const doc = getDocumentDefinition(documentTypeOverride || els.documentTypeSelect.value || job.documentType);
+  job.documentType = doc.id;
   job.updatedAt = new Date().toISOString();
   job.fields = {};
-  JOB_FIELDS.forEach(field => {
-    job.fields[field.id] = document.getElementById(`field_${field.id}`).value.trim();
+  doc.fields.forEach(field => {
+    job.fields[field.id] = document.getElementById(`field_${field.id}`)?.value.trim() || '';
   });
-  job.items = collectItemGroup('items', INSPECTION_ITEMS);
-  job.inHouse = collectItemGroup('inHouse', IN_HOUSE_ITEMS);
+  doc.groups.forEach(group => {
+    job[group.key] = collectItemGroup(group.key, group.items);
+  });
   job.summaryNotes = els.summaryNotes.value.trim();
 
   collectSignatureFields(job);
@@ -575,20 +704,23 @@ function collectItemGroup(kind, list) {
 
 /* Render a saved job record back into the form */
 function hydrateForm(job) {
-  currentJob = job;
-  JOB_FIELDS.forEach(field => {
-    document.getElementById(`field_${field.id}`).value = job.fields?.[field.id] || '';
+  currentJob = normalizeJob(job);
+  renderFormShell();
+  const doc = activeDocument();
+  els.documentTypeSelect.value = doc.id;
+  doc.fields.forEach(field => {
+    const el = document.getElementById(`field_${field.id}`);
+    if (el) el.value = currentJob.fields?.[field.id] || '';
   });
-  hydrateItemGroup('items', INSPECTION_ITEMS, job.items || {});
-  hydrateItemGroup('inHouse', IN_HOUSE_ITEMS, job.inHouse || {});
-  els.summaryNotes.value = job.summaryNotes || '';
-  signatureImageData = job.signatureImage || '';
-  signatureTypedName = job.signatureMode === 'typed' ? (job.signatureTypedName || job.signatureName || '') : '';
+  doc.groups.forEach(group => hydrateItemGroup(group.key, group.items, currentJob[group.key] || {}));
+  els.summaryNotes.value = currentJob.summaryNotes || '';
+  signatureImageData = currentJob.signatureImage || '';
+  signatureTypedName = currentJob.signatureMode === 'typed' ? (currentJob.signatureTypedName || currentJob.signatureName || '') : '';
   els.typedSignatureName.value = signatureTypedName;
   signatureHasInk = Boolean(signatureImageData);
   resizeSignatureCanvas();
   updateSignatureStatus();
-  els.currentJobTitle.textContent = [job.fields?.jobNumberPhase, job.fields?.customerName].filter(Boolean).join(' - ') || 'New Checklist';
+  els.currentJobTitle.textContent = draftTitle(currentJob, 'New Document');
   markDirty(false);
 }
 
@@ -677,7 +809,7 @@ async function getJob(id) {
 
 /* Populate the saved drafts sidebar with available jobs */
 async function loadDraftList() {
-  const jobs = (await getAll('jobs')).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  const jobs = (await getAll('jobs')).map(normalizeJob).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   if (!jobs.length) {
     els.jobList.innerHTML = '<p class="muted small">No saved drafts yet.</p>';
     return;
@@ -688,8 +820,9 @@ async function loadDraftList() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'draft-button';
-    const title = [job.fields?.jobNumberPhase, job.fields?.customerName].filter(Boolean).join(' - ') || 'Untitled Checklist';
-    btn.innerHTML = `<strong>${escapeHtml(title)}</strong><small>${escapeHtml(job.fields?.address || '')}</small><small>Updated ${new Date(job.updatedAt).toLocaleString()}</small>`;
+    const doc = getDocumentDefinition(job.documentType);
+    const title = draftTitle(job, 'Untitled Document');
+    btn.innerHTML = `<strong>${escapeHtml(title)}</strong><small>${escapeHtml(doc.label)}</small><small>${escapeHtml(job.fields?.address || '')}</small><small>Updated ${new Date(job.updatedAt).toLocaleString()}</small>`;
 
     btn.addEventListener('click', async () => {
       if (isDirty() && !confirm('Load this draft? Unsaved changes will be lost.')) return;
@@ -706,6 +839,12 @@ async function loadDraftList() {
 
     els.jobList.appendChild(btn);
   });
+}
+
+function draftTitle(job, fallback = 'Untitled Document') {
+  const doc = getDocumentDefinition(job?.documentType);
+  const parts = [job?.fields?.jobNumberPhase, job?.fields?.customerName].filter(Boolean);
+  return parts.length ? `${parts.join(' - ')} (${doc.shortLabel})` : `${fallback} (${doc.shortLabel})`;
 }
 
 /* Return photos that belong to the current job, sorted by their sort key */
@@ -839,7 +978,7 @@ async function updateStorageStatus() {
   els.storageStatus.textContent = `Device app storage used: ${formatBytes(est.usage || 0)}${est.quota ? ` of about ${formatBytes(est.quota)}` : ''}. Photos are limited by device/browser storage.`;
 }
 
-/* Generate the preconstruction PDF packet from current job data */
+/* Generate the selected document PDF packet from current job data */
 async function generatePacket() {
   try {
     setStatus('Building PDF packet...');
@@ -848,7 +987,7 @@ async function generatePacket() {
     await loadDraftList();
 
     const photos = await getCurrentPhotos();
-    const bytes = await buildPreconPacketPdf(currentJob, photos);
+    const bytes = await buildDocumentPacketPdf(currentJob, photos);
     const filename = packetFilename(currentJob);
     const blob = new Blob([bytes], { type: 'application/pdf' });
     downloadBlob(blob, filename);
@@ -861,47 +1000,45 @@ async function generatePacket() {
 }
 
 function packetFilename(job) {
-  const jobNum = safeFilename(job.fields?.jobNumberPhase || 'PreCon');
+  const doc = getDocumentDefinition(job.documentType);
+  const jobNum = safeFilename(job.fields?.jobNumberPhase || doc.defaultFilename);
   const customer = safeFilename(job.fields?.customerName || 'Customer');
   const signatureState = job.signatureImage ? 'SIGNED' : 'PRE-SIGNATURE';
-  return `${jobNum}-${customer}-PreConstruction-${signatureState}.pdf`;
+  return `${jobNum}-${customer}-${doc.filenameLabel}-${signatureState}.pdf`;
 }
 
 function packetSubtitle(job) {
   return job.signatureImage ? 'In-person signed packet' : 'Pre-signature packet';
 }
 
-/* Build the PDF document structure for the preconstruction packet */
-async function buildPreconPacketPdf(job, photos) {
+/* Build the PDF document structure for the selected packet */
+async function buildDocumentPacketPdf(job, photos) {
+  job = normalizeJob(job);
   const doc = { pages: [], logo: await loadPdfLogo(), editLocked: Boolean(job.signatureImage) };
-  await addChecklistPages(doc, job);
+  await addDocumentPages(doc, job);
   await addPhotoPages(doc, job, photos);
   return buildPdf(doc);
 }
 
-/* Add the checklist pages to the PDF document */
-async function addChecklistPages(doc, job) {
+/* Add the main form pages to the PDF document */
+async function addDocumentPages(doc, job) {
+  const definition = getDocumentDefinition(job.documentType);
   let page = newPdfPage(doc.logo);
   let y = startPdfPage(page, job, packetSubtitle(job));
-  const jobFields = filledJobFields(job);
+  const jobFields = filledJobFields(job, definition);
 
   if (jobFields.length) {
     y = sectionBar(page, 'JOB INFORMATION', y);
     y = addJobInfo(page, job, y, jobFields);
   }
 
-  const inspectionItems = filledItems(INSPECTION_ITEMS, job.items);
-  if (inspectionItems.length) {
-    ({ page, y } = ensurePageSpace(doc, page, job, y + 6, 48, 'Inspection Items continued'));
-    y = sectionBar(page, 'INSPECTION ITEMS', y);
-    ({ page, y } = addItemTable(doc, page, job, inspectionItems, job.items, y, 'Inspection Items continued'));
-  }
-
-  const inHouseItems = filledItems(IN_HOUSE_ITEMS, job.inHouse);
-  if (inHouseItems.length) {
-    ({ page, y } = ensurePageSpace(doc, page, job, y + 8, 54, 'In-House Use continued'));
-    y = sectionBar(page, 'IN-HOUSE USE', y);
-    ({ page, y } = addItemTable(doc, page, job, inHouseItems, job.inHouse, y, 'In-House Use continued'));
+  for (const group of definition.groups) {
+    const groupItems = filledItems(group.items, job[group.key]);
+    if (groupItems.length) {
+      ({ page, y } = ensurePageSpace(doc, page, job, y + 6, 48, group.continuedTitle));
+      y = sectionBar(page, group.pdfTitle, y);
+      ({ page, y } = addItemTable(doc, page, job, groupItems, job[group.key], y, group.continuedTitle));
+    }
   }
 
   if (hasPdfValue(job.summaryNotes)) {
@@ -910,13 +1047,13 @@ async function addChecklistPages(doc, job) {
     y = addSummaryBlock(page, job, y);
   }
 
-  addFooter(page);
+  addFooter(page, job);
   doc.pages.push(page);
 
   const sigPage = newPdfPage(doc.logo);
   startPdfPage(sigPage, job, job.signatureImage ? 'Captured signature page' : 'Signature page');
   await addSignatureBlock(sigPage, job, 156);
-  addFooter(sigPage);
+  addFooter(sigPage, job);
   doc.pages.push(sigPage);
 }
 
@@ -935,7 +1072,7 @@ async function loadPdfLogo() {
 
 /* Add the document header to each PDF page */
 function startPdfPage(page, job, subtitle = 'Pre-signature packet') {
-  addHeader(page, 'PRE-CONSTRUCTION CHECKLIST', job, 28, subtitle);
+  addHeader(page, getDocumentDefinition(job.documentType).pdfTitle, job, 28, subtitle);
   return 104;
 }
 
@@ -961,7 +1098,7 @@ function sectionBar(page, title, y) {
 /* Ensure enough space remains on the current PDF page or create a new page */
 function ensurePageSpace(doc, page, job, y, needed, subtitle) {
   if (y + needed <= 736) return { page, y, newPage: false };
-  addFooter(page);
+  addFooter(page, job);
   doc.pages.push(page);
   const nextPage = newPdfPage(doc.logo);
   const nextY = startPdfPage(nextPage, job, subtitle);
@@ -969,15 +1106,16 @@ function ensurePageSpace(doc, page, job, y, needed, subtitle) {
 }
 
 /* Draw the footer on a PDF page */
-function addFooter(page) {
+function addFooter(page, job = currentJob) {
+  const definition = getDocumentDefinition(job?.documentType);
   line(page, MARGIN, 758, PAGE_W - MARGIN, 758, PDF_COLORS.teal);
-  text(page, 'Pre-Construction Checklist', MARGIN, 774, 7, 'F1', PDF_COLORS.teal);
-  textRight(page, 'Photos follow signature page when included', PAGE_W - MARGIN, 774, 7, 'F1', PDF_COLORS.teal);
+  text(page, definition.title, MARGIN, 774, 7, 'F1', PDF_COLORS.teal);
+  textRight(page, definition.footerNote, PAGE_W - MARGIN, 774, 7, 'F1', PDF_COLORS.teal);
 }
 
 /* Helpers for filtering fields and items that should be printed */
-function filledJobFields(job) {
-  return JOB_FIELDS.filter(field => hasPdfValue(job.fields?.[field.id]));
+function filledJobFields(job, definition = getDocumentDefinition(job.documentType)) {
+  return definition.fields.filter(field => hasPdfValue(job.fields?.[field.id]));
 }
 
 function filledItems(items, values) {
@@ -994,7 +1132,7 @@ function itemHasPdfValue(item, row) {
 
 function selectedWording(item, row) {
   const selection = row.selection || '';
-  return (DISPLAYED_WORDING[item.id] || []).filter(([sel]) => sel === selection);
+  return (getDocumentDefinition(currentJob?.documentType).displayedWording?.[item.id] || []).filter(([sel]) => sel === selection);
 }
 
 /* Render job fields into the PDF in two columns */
@@ -1064,8 +1202,9 @@ function addSummaryBlock(page, job, y) {
 
 /* Add the signature section to the PDF */
 async function addSignatureBlock(page, job, y) {
+  const definition = getDocumentDefinition(job.documentType);
   y = sectionBar(page, 'CUSTOMER ACKNOWLEDGMENT', y);
-  wrappedText(page, 'By signing below, customer acknowledges the Pre-Construction Checklist and all included selections, notes, and attachments.', MARGIN, y + 6, PAGE_W - MARGIN * 2, 10, 13, 'F1');
+  wrappedText(page, definition.signatureText, MARGIN, y + 6, PAGE_W - MARGIN * 2, 10, 13, 'F1');
   y += 86;
   if (job.signatureImage) {
     try {
@@ -1107,7 +1246,7 @@ async function addPhotoPages(doc, job, photos) {
   let pageNum = 1;
   for (let i = 0; i < photos.length; i += 2) {
     const page = newPdfPage(doc.logo);
-    addHeader(page, 'PRE-CONSTRUCTION CHECKLIST', job, 44, `Photo Page ${pageNum}`);
+    addHeader(page, getDocumentDefinition(job.documentType).pdfTitle, job, 44, `Photo Page ${pageNum}`);
     const slots = [
       { x: MARGIN, y: 126, w: PAGE_W - MARGIN * 2, h: 250 },
       { x: MARGIN, y: 424, w: PAGE_W - MARGIN * 2, h: 250 }
@@ -1123,7 +1262,7 @@ async function addPhotoPages(doc, job, photos) {
       wrappedText(page, photo.caption || `Photo ${i + j + 1}`, slot.x + 8, slot.y + slot.h - 20, slot.w - 16, 9, 11, 'F1', 2);
     }
 
-    addFooter(page);
+    addFooter(page, job);
     doc.pages.push(page);
     pageNum++;
   }

@@ -13,14 +13,14 @@
     <div class="brand-block">
       <img class="brand-logo" src="assets/absolute-aluminum-logo.png" alt="Absolute Aluminum">
       <div>
-        <p class="eyebrow">Pre-Construction</p>
-        <h1>Checklist</h1>
-        <p class="muted">Offline draft, unlimited photos by device storage, pre-signature packet output.</p>
+        <p class="eyebrow">Document Builder</p>
+        <h1>Field Checklist</h1>
+        <p class="muted">Offline drafts, unlimited photos by device storage, pre-signature packet output.</p>
       </div>
     </div>
     <div class="header-actions">
       <button id="installBtn" class="secondary hidden" type="button">Install App</button>
-      <button id="newJobBtn" class="secondary" type="button">New Checklist</button>
+      <button id="newJobBtn" class="secondary" type="button">New Document</button>
       <button id="saveBtn" type="button">Save Draft</button>
     </div>
   </header>
@@ -47,21 +47,25 @@
           <div class="hero-row">
             <div>
               <p class="eyebrow">Current Draft</p>
-              <h2 id="currentJobTitle">New Checklist</h2>
+              <h2 id="currentJobTitle">New Document</h2>
               <p class="muted">Drafts are saved on this device. Upload/share the final PDF when ready.</p>
             </div>
             <div class="pill" id="dirtyPill">Unsaved</div>
           </div>
+          <label class="field document-type-field">
+            <span>Document Type</span>
+            <select id="documentTypeSelect"></select>
+          </label>
           <div id="jobInfoFields" class="grid two"></div>
         </section>
 
         <section class="card">
-          <h2>Inspection Items</h2>
+          <h2 id="inspectionSectionTitle">Inspection Items</h2>
           <div id="inspectionItems"></div>
         </section>
 
         <section class="card">
-          <h2>In-House Use</h2>
+          <h2 id="inHouseSectionTitle">In-House Use</h2>
           <div id="inHouseItems"></div>
         </section>
 
@@ -69,7 +73,7 @@
           <h2>Summary</h2>
           <label class="field full-field">
             <span>Summary Notes</span>
-            <textarea id="summaryNotes" rows="6" placeholder="Enter pre-construction summary notes..."></textarea>
+            <textarea id="summaryNotes" rows="6" placeholder="Enter summary notes..."></textarea>
           </label>
         </section>
 
