@@ -36,7 +36,7 @@
       <section class="card compact-card">
         <h2>Packet Output</h2>
         <button id="signedPdfBtn" class="full" type="button">Download PDF Packet</button>
-        <p class="muted small">Capture an in-person signature below, or leave it blank to include a fillable signature field in the PDF.</p>
+        <p class="muted small">The PDF includes One Click Contractor signature and date placeholders.</p>
         <div id="outputStatus" class="status-box"></div>
       </section>
     </aside>
@@ -95,25 +95,6 @@
           <div id="photoGrid" class="photo-grid"></div>
         </section>
 
-        <section class="card signature-page-note">
-          <h2>Signature Page</h2>
-          <p class="muted">Sign in person, create a typed signature, or leave this blank to keep a fillable customer signature field in the PDF.</p>
-          <div class="typed-signature-row">
-            <label class="field">
-              <span>Typed Signature Name</span>
-              <input id="typedSignatureName" type="text" placeholder="Type customer name">
-            </label>
-            <button id="useTypedSignatureBtn" class="secondary" type="button">Use Typed Signature</button>
-          </div>
-          <div class="signature-area">
-            <canvas id="signatureCanvas" aria-label="Customer signature pad"></canvas>
-          </div>
-          <div class="signature-actions">
-            <button id="clearSignatureBtn" class="secondary" type="button">Clear Signature</button>
-            <span id="signatureStatus" class="muted small">No captured signature. PDF will include a signature field.</span>
-          </div>
-        </section>
-
         <section class="card bottom-actions-card">
           <h2>Finish Checklist</h2>
           <div class="bottom-actions">
@@ -145,7 +126,6 @@
   <script src="utils.js" defer></script>
   <script src="storage.js" defer></script>
   <script src="photos.js" defer></script>
-  <script src="signature.js" defer></script>
   <script src="pdf.js" defer></script>
   <script src="app.js" defer></script>
 </body>

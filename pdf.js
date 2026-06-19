@@ -41,13 +41,13 @@ function packetFilename(job) {
 }
 
 function packetSubtitle(job) {
-  return job.signatureImage ? 'In-person signed packet' : 'Pre-signature packet';
+  return 'Pre-signature packet';
 }
 
 /* Build the PDF document structure for the selected packet */
 async function buildDocumentPacketPdf(job, photos) {
   job = normalizeJob(job);
-  const doc = { pages: [], logo: await loadPdfLogo(), editLocked: Boolean(job.signatureImage) };
+  const doc = { pages: [], logo: await loadPdfLogo() };
   await addDocumentPages(doc, job);
   await addPhotoPages(doc, job, photos);
   return buildPdf(doc);
@@ -84,7 +84,7 @@ async function addDocumentPages(doc, job) {
   doc.pages.push(page);
 
   const sigPage = newPdfPage(doc.logo);
-  startPdfPage(sigPage, job, job.signatureImage ? 'Captured signature page' : 'Signature page');
+  startPdfPage(sigPage, job, 'Signature page');
   await addSignatureBlock(sigPage, job, 156);
   addFooter(sigPage, job);
   doc.pages.push(sigPage);
@@ -239,29 +239,12 @@ async function addSignatureBlock(page, job, y) {
   y = sectionBar(page, 'CUSTOMER ACKNOWLEDGMENT', y);
   wrappedText(page, definition.signatureText, MARGIN, y + 6, PAGE_W - MARGIN * 2, 10, 13, 'F1');
   y += 86;
-  if (job.signatureImage) {
-    try {
-      const signature = await dataUrlToJpegImage(job.signatureImage, 900, 0.92);
-      const fit = fitRect(signature.width, signature.height, 292, 42);
-      imageOnPage(page, signature, MARGIN + 4, y - 46 + (42 - fit.h) / 2, fit.w, fit.h);
-    } catch (err) {
-      console.warn('Captured signature could not be embedded', err);
-      throw new Error('Captured signature could not be embedded in the locked PDF.');
-    }
-  }
   line(page, MARGIN, y, MARGIN + 300, y, PDF_COLORS.teal);
-  if (!job.signatureImage) {
-    text(page, '{{bsr}}', MARGIN + 4, y - 10, 12, 'F1', PDF_COLORS.white);
-  }
+  text(page, '{{bsr}}', MARGIN + 4, y - 10, 12, 'F1', PDF_COLORS.white);
   text(page, 'Customer Signature', MARGIN, y + 16, 8, 'F2', PDF_COLORS.plum);
-  labelValue(page, 'Customer Printed Name', job.signatureName || job.fields?.customerName || '', MARGIN, y + 42, 250);
-  labelValue(page, 'Date', formatDateForPdf(job.signatureDate), 330, y + 42, 160);
-  if (!job.signatureImage) {
-    text(page, '{{bdr}}', 345, y + 61, 8, 'F1', PDF_COLORS.white);
-  }
-  if (job.signatureImage) {
-    wrappedText(page, 'Local signature captured. This PDF is locked against editing in standard PDF viewers.', MARGIN, y + 98, PAGE_W - MARGIN * 2, 8, 10, 'F1', 2);
-  }
+  labelValue(page, 'Customer Printed Name', job.fields?.customerName || '', MARGIN, y + 42, 250);
+  labelValue(page, 'Date', '', 330, y + 42, 160);
+  text(page, '{{bdr}}', 345, y + 61, 8, 'F1', PDF_COLORS.white);
 }
 
 /* Add photo pages into the PDF, two photos per page */

@@ -12,8 +12,7 @@ It includes:
 - Summary notes
 - Unlimited photos, limited by the device/browser storage quota
 - Photo captions and reorder controls
-- Local customer signature capture
-- Remote-signature packet generation
+- One Click Contractor-ready signature packet generation
 - Actual browser-side PDF generation with photo pages appended to the end
 
 The uploaded original PDF is included at:
@@ -56,31 +55,14 @@ Once installed/cached, the app shell works offline. Saved drafts and photos rema
 
 ---
 
-## Signature modes
+## Signature workflow
 
-### Local in-person signature
+1. Fill the checklist and add photos.
+2. Tap **Download PDF Packet**.
+3. Upload the packet to One Click Contractor.
+4. One Click Contractor replaces `{{bsr}}` with the customer signature and `{{bdr}}` with the signing date.
 
-Use this when the customer is standing with the pre-construction specialist.
-
-1. Fill checklist
-2. Add photos
-3. Customer signs on the signature canvas
-4. Tap **Download Signed PDF**
-5. The app generates a final signed packet with photo pages appended
-
-### Remote signature
-
-Use this when the customer is not present.
-
-1. Fill checklist
-2. Add photos
-3. Select **Send for customer signature later**
-4. Enter customer email and optional due date/message
-5. Tap **Generate / Share Remote-Sign PDF**
-6. The app generates an unsigned packet and, where supported, opens the device share sheet
-7. Send the PDF by email or upload it into Adobe Acrobat Sign
-
-A fully automated Adobe Sign send requires a secure company backend because Adobe credentials/API tokens must not be stored in the offline app.
+The app does not capture or embed local signatures.
 
 ---
 
@@ -108,11 +90,8 @@ For production, if you truly need hundreds of photos reliably on iPad, package t
 
 Before using this as the official process, decide these items:
 
-1. Whether local in-person signature is legally acceptable for this checklist workflow.
-2. Whether Adobe Sign is required for every signature or only remote signatures.
-3. Where final PDFs should be uploaded: SharePoint, OneDrive, OneClick Contractor, Monday.com, or another system.
-4. Whether photo originals should be retained separately from the compressed PDF packet.
-5. Whether the app needs user login and audit trail.
+1. Whether photo originals should be retained separately from the compressed PDF packet.
+2. Whether the app needs user login and audit trail.
 
 ---
 

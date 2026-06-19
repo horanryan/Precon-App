@@ -11,7 +11,6 @@ const REQUIRED_ELEMENT_IDS = [
   'documentTypeSelect', 'jobInfoFields', 'inspectionSectionTitle', 'inspectionItems', 'inHouseSectionTitle', 'inHouseItems',
   'extraDocumentSections', 'summaryNotes', 'addPhotosBtn', 'photoInput', 'photoGrid',
   'refreshPhotosBtn', 'clearPhotosBtn', 'signedPdfBtn', 'outputStatus',
-  'typedSignatureName', 'useTypedSignatureBtn', 'signatureCanvas', 'clearSignatureBtn', 'signatureStatus',
   'bottomSaveBtn', 'bottomSignedPdfBtn', 'bottomOutputStatus',
   'checklistForm'
 ];
@@ -50,7 +49,6 @@ function cacheEls() {
 
 /* Create a new blank job object with standard metadata */
 function blankJob() {
-  const today = new Date().toISOString().slice(0, 10);
   return {
     id: createId('job'),
     documentType: DEFAULT_DOCUMENT_TYPE,
@@ -59,8 +57,7 @@ function blankJob() {
     fields: {},
     items: {},
     inHouse: {},
-    summaryNotes: '',
-    signatureDate: today
+    summaryNotes: ''
   };
 }
 
@@ -84,6 +81,13 @@ function normalizeJob(job) {
   out.pergolaPan6 = out.pergolaPan6 || {};
   out.general = out.general || {};
   out.summaryNotes = out.summaryNotes || '';
+  // One Click Contractor owns the signature workflow. Remove legacy local-signature data
+  // so older drafts cannot embed a captured signature in a newly generated packet.
+  delete out.signatureMode;
+  delete out.signatureName;
+  delete out.signatureDate;
+  delete out.signatureImage;
+  delete out.signatureTypedName;
   return out;
 }
 
@@ -253,7 +257,6 @@ function bindEvents() {
     }
   });
 
-  bindSignaturePad();
   els.signedPdfBtn.addEventListener('click', generatePacket);
   bindAsyncClick(els.bottomSaveBtn, saveCurrentDraft, 'Save failed');
   els.bottomSignedPdfBtn.addEventListener('click', generatePacket);
@@ -300,8 +303,6 @@ function collectJobFromForm(documentTypeOverride = null) {
   });
   job.summaryNotes = els.summaryNotes.value.trim();
 
-  collectSignatureFields(job);
-
   return job;
 }
 
@@ -332,12 +333,6 @@ function hydrateForm(job) {
   });
   doc.groups.forEach(group => hydrateItemGroup(group.key, group.items, currentJob[group.key] || {}));
   els.summaryNotes.value = currentJob.summaryNotes || '';
-  signatureImageData = currentJob.signatureImage || '';
-  signatureTypedName = currentJob.signatureMode === 'typed' ? (currentJob.signatureTypedName || currentJob.signatureName || '') : '';
-  els.typedSignatureName.value = signatureTypedName;
-  signatureHasInk = Boolean(signatureImageData);
-  resizeSignatureCanvas();
-  updateSignatureStatus();
   els.currentJobTitle.textContent = draftTitle(currentJob, 'New Document');
   markDirty(false);
 }
