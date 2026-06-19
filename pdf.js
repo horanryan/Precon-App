@@ -138,7 +138,23 @@ function addPageNumber(page, pageNumber, pageCount) {
 
 /* Return only job fields that contain printable content. */
 function filledJobFields(job, definition = getDocumentDefinition(job.documentType)) {
-  return definition.fields.filter(field => hasPdfValue(job.fields?.[field.id]));
+  const addressIds = new Set(['streetAddress', 'city', 'state', 'zip']);
+  const fields = [];
+  let addressAdded = false;
+
+  definition.fields.forEach(field => {
+    if (addressIds.has(field.id)) {
+      if (!addressAdded) {
+        const value = formatAddress(job.fields);
+        if (hasPdfValue(value)) fields.push({ id: 'address', label: 'Address', value });
+        addressAdded = true;
+      }
+      return;
+    }
+    if (hasPdfValue(job.fields?.[field.id])) fields.push(field);
+  });
+
+  return fields;
 }
 
 /* Return only checklist items with a selected or entered value. */
@@ -169,7 +185,7 @@ function addJobInfo(page, job, y, fields = filledJobFields(job)) {
   fields.forEach((field, idx) => {
     const rowY = y + idx * rowH;
     text(page, field.label, MARGIN + 6, rowY + 12, 7.5, 'F2');
-    textRight(page, job.fields?.[field.id] || '', PAGE_W - MARGIN - 6, rowY + 12, 9, 'F1');
+    textRight(page, field.value ?? job.fields?.[field.id] ?? '', PAGE_W - MARGIN - 6, rowY + 12, 9, 'F1');
   });
   return y + fields.length * rowH + 4;
 }
@@ -277,9 +293,32 @@ function text(page, value, x, yTop, size = 10, font = 'F1', color = null) {
   page.commands.push(color ? `q ${pdfRgb(color)} rg ${command} Q` : command);
 }
 
-/* Right-align text with a lightweight Helvetica width estimate. */
+/* Standard Helvetica glyph widths in thousandths of one text unit. */
+const HELVETICA_WIDTHS = {
+  ' ': 278, '!': 278, '"': 355, '#': 556, '$': 556, '%': 889, '&': 667, "'": 191,
+  '(': 333, ')': 333, '*': 389, '+': 584, ',': 278, '-': 333, '.': 278, '/': 278,
+  ':': 278, ';': 278, '<': 584, '=': 584, '>': 584, '?': 556, '@': 1015,
+  A: 667, B: 667, C: 722, D: 722, E: 667, F: 611, G: 778, H: 722, I: 278,
+  J: 500, K: 667, L: 556, M: 833, N: 722, O: 778, P: 667, Q: 778, R: 722,
+  S: 667, T: 611, U: 722, V: 667, W: 944, X: 667, Y: 667, Z: 611,
+  '[': 278, '\\': 278, ']': 278, '^': 469, _: 556, '`': 333,
+  a: 556, b: 556, c: 500, d: 556, e: 556, f: 278, g: 556, h: 556, i: 222,
+  j: 222, k: 500, l: 222, m: 833, n: 556, o: 556, p: 556, q: 556, r: 333,
+  s: 500, t: 278, u: 556, v: 500, w: 722, x: 500, y: 500, z: 500,
+  '{': 334, '|': 260, '}': 334, '~': 584
+};
+
+/* Measure text using the same Helvetica metrics embedded in the PDF. */
+function helveticaTextWidth(value, size) {
+  return Array.from(pdfCleanText(value)).reduce((width, char) => {
+    const glyphWidth = char >= '0' && char <= '9' ? 556 : (HELVETICA_WIDTHS[char] || 556);
+    return width + glyphWidth;
+  }, 0) * size / 1000;
+}
+
+/* Right-align text to an exact shared edge using Helvetica font metrics. */
 function textRight(page, value, rightX, yTop, size = 10, font = 'F1', color = null) {
-  text(page, value, rightX - String(value).length * size * 0.52, yTop, size, font, color);
+  text(page, value, rightX - helveticaTextWidth(value, size), yTop, size, font, color);
 }
 
 /* Wrap text to a fixed width and append one PDF command per line. */

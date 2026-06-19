@@ -34,7 +34,7 @@ const DISPLAYED_WORDING = {
 const ADDRESS_FIELDS = [
   { id: 'streetAddress', label: 'Street Address', type: 'text', autocomplete: 'address-line1', fullWidth: true },
   { id: 'city', label: 'City', type: 'text', autocomplete: 'address-level2' },
-  { id: 'state', label: 'State', type: 'text', autocomplete: 'address-level1', maxLength: 2, placeholder: 'FL' },
+  { id: 'state', label: 'State', type: 'text', autocomplete: 'address-level1', maxLength: 2, placeholder: 'FL', defaultValue: 'FL' },
   { id: 'zip', label: 'ZIP Code', type: 'text', autocomplete: 'postal-code', inputMode: 'numeric', maxLength: 10, placeholder: '12345' }
 ];
 
@@ -116,12 +116,28 @@ const IN_HOUSE_ITEMS = [
 const QC_JOB_FIELDS = [
   { id: 'customerName', label: 'Customer Name', type: 'text' },
   ...ADDRESS_FIELDS,
+  { id: 'email', label: 'Email', type: 'email' },
+  { id: 'phone', label: 'Phone #', type: 'tel' },
   { id: 'jobNumberPhase', label: 'Job # and Phase', type: 'text' },
-  { id: 'qualityControlDate', label: 'Quality Control Date', type: 'date' },
-  { id: 'qualityControlInspector', label: 'Quality Control Inspector', type: 'text' },
-  { id: 'crewLead', label: 'Crew Lead', type: 'text' },
-  { id: 'projectType', label: 'Project Type', type: 'text' },
-  { id: 'permitNumber', label: 'Permit #', type: 'text' }
+  { id: 'gateCode', label: 'Gate Code', type: 'text' },
+  { id: 'qcSpecialist', label: 'QC Specialist', type: 'text' },
+  {
+    id: 'installCrew',
+    label: 'Install Crew',
+    options: [
+      'N/A',
+      'Sean & Javier',
+      'Rich & Freddy',
+      'Alex L, Eddie I and Eddie III',
+      'Marco & Roger',
+      'Manuel & Yael',
+      'Alejandro',
+      'Misael and Armando',
+      'Adam E',
+      'Josh F'
+    ]
+  },
+  { id: 'concreteCrew', label: 'Concrete Crew', options: ['Canine Concrete', 'Wagle Concrete'] }
 ];
 
 const QC_INSPECTION_ITEMS = [

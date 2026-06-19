@@ -111,7 +111,7 @@ function renderFormShell() {
   els.jobInfoFields.innerHTML = doc.fields.map(field => `
     <label class="field ${field.fullWidth ? 'full-field' : ''}">
       <span>${escapeHtml(field.label)}</span>
-      <input id="field_${field.id}" data-kind="job-field" data-id="${field.id}" type="${field.type || 'text'}"${field.autocomplete ? ` autocomplete="${field.autocomplete}"` : ''}${field.inputMode ? ` inputmode="${field.inputMode}"` : ''}${field.maxLength ? ` maxlength="${field.maxLength}"` : ''}${field.placeholder ? ` placeholder="${escapeHtml(field.placeholder)}"` : ''}>
+      ${renderJobFieldControl(field)}
     </label>
   `).join('');
   els.inspectionItems.innerHTML = (doc.groups[0]?.items || []).map(item => renderChecklistItem(item, doc.groups[0].key)).join('');
@@ -122,6 +122,16 @@ function renderFormShell() {
       <div>${group.items.map(item => renderChecklistItem(item, group.key)).join('')}</div>
     </section>
   `).join('');
+}
+
+/* Render a job-information text field or configured dropdown. */
+function renderJobFieldControl(field) {
+  if (field.options) {
+    return `<select id="field_${field.id}" data-kind="job-field" data-id="${field.id}">
+      ${field.options.map(option => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join('')}
+    </select>`;
+  }
+  return `<input id="field_${field.id}" data-kind="job-field" data-id="${field.id}" type="${field.type || 'text'}"${field.autocomplete ? ` autocomplete="${field.autocomplete}"` : ''}${field.inputMode ? ` inputmode="${field.inputMode}"` : ''}${field.maxLength ? ` maxlength="${field.maxLength}"` : ''}${field.placeholder ? ` placeholder="${escapeHtml(field.placeholder)}"` : ''}>`;
 }
 
 /* Render a single checklist item card */
@@ -214,7 +224,7 @@ function bindEvents() {
     const previous = collectJobFromForm(currentJob.documentType);
     const nextJob = blankJob();
     nextJob.documentType = nextType;
-    ['customerName', 'streetAddress', 'city', 'state', 'zip', 'address', 'email', 'phone', 'jobNumberPhase'].forEach(id => {
+    ['customerName', 'streetAddress', 'city', 'state', 'zip', 'address', 'email', 'phone', 'jobNumberPhase', 'gateCode'].forEach(id => {
       if (previous.fields?.[id]) nextJob.fields[id] = previous.fields[id];
     });
     currentJob = nextJob;
@@ -336,7 +346,7 @@ function hydrateForm(job) {
   els.documentTypeSelect.value = doc.id;
   doc.fields.forEach(field => {
     const el = document.getElementById(`field_${field.id}`);
-    if (el) el.value = currentJob.fields?.[field.id] || '';
+    if (el) el.value = currentJob.fields?.[field.id] || field.defaultValue || '';
   });
   doc.groups.forEach(group => hydrateItemGroup(group.key, group.items, currentJob[group.key] || {}));
   els.summaryNotes.value = currentJob.summaryNotes || '';
