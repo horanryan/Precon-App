@@ -36,8 +36,7 @@ function packetFilename(job) {
   const doc = getDocumentDefinition(job.documentType);
   const jobNum = safeFilename(job.fields?.jobNumberPhase || doc.defaultFilename);
   const customer = safeFilename(job.fields?.customerName || 'Customer');
-  const signatureState = job.signatureImage ? 'SIGNED' : 'PRE-SIGNATURE';
-  return `${jobNum}-${customer}-${doc.filenameLabel}-${signatureState}.pdf`;
+  return `${customer}_${jobNum}_${doc.filenameLabel}.pdf`;
 }
 
 function packetSubtitle(job) {
@@ -248,8 +247,6 @@ async function addSignatureBlock(page, job, y) {
       console.warn('Captured signature could not be embedded', err);
       throw new Error('Captured signature could not be embedded in the locked PDF.');
     }
-  } else {
-    addSignatureField(page, 'CustomerSignature', MARGIN, y - 34, 300, 34);
   }
   line(page, MARGIN, y, MARGIN + 300, y, PDF_COLORS.teal);
   text(page, 'Customer Signature', MARGIN, y + 16, 8, 'F2', PDF_COLORS.plum);
@@ -258,18 +255,6 @@ async function addSignatureBlock(page, job, y) {
   if (job.signatureImage) {
     wrappedText(page, 'Local signature captured. This PDF is locked against editing in standard PDF viewers.', MARGIN, y + 98, PAGE_W - MARGIN * 2, 8, 10, 'F1', 2);
   }
-}
-
-function addSignatureField(page, name, xTop, yTop, w, h) {
-  page.annotations.push({
-    type: 'signature',
-    name,
-    rect: pdfRectFromTopLeft(xTop, yTop, w, h)
-  });
-}
-
-function pdfRectFromTopLeft(xTop, yTop, w, h) {
-  return [xTop, PAGE_H - yTop - h, xTop + w, PAGE_H - yTop];
 }
 
 /* Add photo pages into the PDF, two photos per page */
