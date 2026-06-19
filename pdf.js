@@ -250,9 +250,15 @@ async function addSignatureBlock(page, job, y) {
     }
   }
   line(page, MARGIN, y, MARGIN + 300, y, PDF_COLORS.teal);
+  if (!job.signatureImage) {
+    text(page, '{{bsr}}', MARGIN + 4, y - 10, 12, 'F1', PDF_COLORS.white);
+  }
   text(page, 'Customer Signature', MARGIN, y + 16, 8, 'F2', PDF_COLORS.plum);
   labelValue(page, 'Customer Printed Name', job.signatureName || job.fields?.customerName || '', MARGIN, y + 42, 250);
   labelValue(page, 'Date', formatDateForPdf(job.signatureDate), 330, y + 42, 160);
+  if (!job.signatureImage) {
+    text(page, '{{bdr}}', 345, y + 61, 8, 'F1', PDF_COLORS.white);
+  }
   if (job.signatureImage) {
     wrappedText(page, 'Local signature captured. This PDF is locked against editing in standard PDF viewers.', MARGIN, y + 98, PAGE_W - MARGIN * 2, 8, 10, 'F1', 2);
   }
