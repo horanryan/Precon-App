@@ -386,6 +386,9 @@ async function loadDraftList() {
 
   els.jobList.innerHTML = '';
   jobs.forEach(job => {
+    const row = document.createElement('div');
+    row.className = 'draft-row';
+
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'draft-button';
@@ -406,7 +409,37 @@ async function loadDraftList() {
       }
     });
 
-    els.jobList.appendChild(btn);
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'danger subtle draft-delete-button';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.setAttribute('aria-label', `Delete ${title}`);
+    deleteBtn.addEventListener('click', async () => {
+      if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+      try {
+        const photos = (await getAll('photos')).filter(photo => photo.jobId === job.id);
+        for (const photo of photos) await deleteStore('photos', photo.id);
+        await deleteStore('jobs', job.id);
+
+        if (currentJob.id === job.id) {
+          const documentType = currentJob.documentType || DEFAULT_DOCUMENT_TYPE;
+          currentJob = blankJob();
+          currentJob.documentType = documentType;
+          hydrateForm(currentJob);
+          await renderPhotos();
+        }
+
+        await loadDraftList();
+        await updateStorageStatus();
+        setStatus(`Deleted draft: ${title}.`);
+      } catch (err) {
+        console.error('Draft deletion failed', err);
+        setStatus(`Could not delete draft: ${err.message || 'unknown error'}`);
+      }
+    });
+
+    row.append(btn, deleteBtn);
+    els.jobList.appendChild(row);
   });
 }
 

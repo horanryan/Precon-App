@@ -247,6 +247,13 @@ button.full { width: 100%; margin-bottom: .75rem; }
   gap: .55rem;
 }
 
+.draft-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: .45rem;
+  align-items: stretch;
+}
+
 .draft-button {
   text-align: left;
   background: #fbfff0;
@@ -254,6 +261,11 @@ button.full { width: 100%; margin-bottom: .75rem; }
   box-shadow: none;
   border: 1px solid var(--border);
   display: block;
+}
+
+.draft-delete-button {
+  align-self: stretch;
+  padding-inline: .75rem;
 }
 
 .draft-button strong {
