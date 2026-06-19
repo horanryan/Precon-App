@@ -34,7 +34,8 @@ async function generatePacket() {
 
 function packetFilename(job) {
   const doc = getDocumentDefinition(job.documentType);
-  const jobNum = safeFilename(job.fields?.jobNumberPhase || doc.defaultFilename);
+  const jobNumberPhase = String(job.fields?.jobNumberPhase || '').trim();
+  const jobNum = jobNumberPhase.match(/^\d+/)?.[0] || safeFilename(doc.defaultFilename);
   const customer = safeFilename(job.fields?.customerName || 'Customer');
   return `${customer}_${jobNum}_${doc.filenameLabel}.pdf`;
 }

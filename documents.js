@@ -31,9 +31,16 @@ const DISPLAYED_WORDING = {
 };
 
 /* Fields captured for each job checklist */
+const ADDRESS_FIELDS = [
+  { id: 'streetAddress', label: 'Street Address', type: 'text', autocomplete: 'address-line1', fullWidth: true },
+  { id: 'city', label: 'City', type: 'text', autocomplete: 'address-level2' },
+  { id: 'state', label: 'State', type: 'text', autocomplete: 'address-level1', maxLength: 2, placeholder: 'FL' },
+  { id: 'zip', label: 'ZIP Code', type: 'text', autocomplete: 'postal-code', inputMode: 'numeric', maxLength: 10, placeholder: '12345' }
+];
+
 const JOB_FIELDS = [
   { id: 'customerName', label: 'Customer Name', type: 'text' },
-  { id: 'address', label: 'Address', type: 'text' },
+  ...ADDRESS_FIELDS,
   { id: 'email', label: 'Email', type: 'email' },
   { id: 'phone', label: 'Phone #', type: 'tel' },
   { id: 'jobNumberPhase', label: 'Job # and Phase', type: 'text' },
@@ -108,7 +115,7 @@ const IN_HOUSE_ITEMS = [
 
 const QC_JOB_FIELDS = [
   { id: 'customerName', label: 'Customer Name', type: 'text' },
-  { id: 'address', label: 'Address', type: 'text' },
+  ...ADDRESS_FIELDS,
   { id: 'jobNumberPhase', label: 'Job # and Phase', type: 'text' },
   { id: 'qualityControlDate', label: 'Quality Control Date', type: 'date' },
   { id: 'qualityControlInspector', label: 'Quality Control Inspector', type: 'text' },

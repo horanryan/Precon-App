@@ -77,6 +77,7 @@ function normalizeJob(job) {
   const out = job || blankJob();
   out.documentType = getDocumentDefinition(out.documentType).id;
   out.fields = out.fields || {};
+  if (!out.fields.streetAddress && out.fields.address) out.fields.streetAddress = out.fields.address;
   out.items = out.items || {};
   out.inHouse = out.inHouse || {};
   out.gutters = out.gutters || {};
@@ -100,9 +101,9 @@ function renderFormShell() {
   els.inHouseSectionTitle.textContent = doc.groups[1]?.title || 'Additional Items';
   els.summaryNotes.placeholder = doc.summaryPlaceholder || 'Enter summary notes...';
   els.jobInfoFields.innerHTML = doc.fields.map(field => `
-    <label class="field ${field.id === 'address' ? 'full-field' : ''}">
+    <label class="field ${field.fullWidth ? 'full-field' : ''}">
       <span>${escapeHtml(field.label)}</span>
-      <input id="field_${field.id}" data-kind="job-field" data-id="${field.id}" type="${field.type || 'text'}">
+      <input id="field_${field.id}" data-kind="job-field" data-id="${field.id}" type="${field.type || 'text'}"${field.autocomplete ? ` autocomplete="${field.autocomplete}"` : ''}${field.inputMode ? ` inputmode="${field.inputMode}"` : ''}${field.maxLength ? ` maxlength="${field.maxLength}"` : ''}${field.placeholder ? ` placeholder="${escapeHtml(field.placeholder)}"` : ''}>
     </label>
   `).join('');
   els.inspectionItems.innerHTML = (doc.groups[0]?.items || []).map(item => renderChecklistItem(item, doc.groups[0].key)).join('');
@@ -205,7 +206,7 @@ function bindEvents() {
     const previous = collectJobFromForm(currentJob.documentType);
     const nextJob = blankJob();
     nextJob.documentType = nextType;
-    ['customerName', 'address', 'email', 'phone', 'jobNumberPhase'].forEach(id => {
+    ['customerName', 'streetAddress', 'city', 'state', 'zip', 'address', 'email', 'phone', 'jobNumberPhase'].forEach(id => {
       if (previous.fields?.[id]) nextJob.fields[id] = previous.fields[id];
     });
     currentJob = nextJob;
@@ -292,6 +293,8 @@ function collectJobFromForm(documentTypeOverride = null) {
   doc.fields.forEach(field => {
     job.fields[field.id] = document.getElementById(`field_${field.id}`)?.value.trim() || '';
   });
+  job.fields.state = (job.fields.state || '').toUpperCase();
+  job.fields.address = formatAddress(job.fields);
   doc.groups.forEach(group => {
     job[group.key] = collectItemGroup(group.key, group.items);
   });
@@ -384,7 +387,7 @@ async function loadDraftList() {
     btn.className = 'draft-button';
     const doc = getDocumentDefinition(job.documentType);
     const title = draftTitle(job, 'Untitled Document');
-    btn.innerHTML = `<strong>${escapeHtml(title)}</strong><small>${escapeHtml(doc.label)}</small><small>${escapeHtml(job.fields?.address || '')}</small><small>Updated ${new Date(job.updatedAt).toLocaleString()}</small>`;
+    btn.innerHTML = `<strong>${escapeHtml(title)}</strong><small>${escapeHtml(doc.label)}</small><small>${escapeHtml(formatAddress(job.fields))}</small><small>Updated ${new Date(job.updatedAt).toLocaleString()}</small>`;
 
     btn.addEventListener('click', async () => {
       if (isDirty() && !confirm('Load this draft? Unsaved changes will be lost.')) return;
@@ -409,3 +412,11 @@ function draftTitle(job, fallback = 'Untitled Document') {
   return parts.length ? `${parts.join(' - ')} (${doc.shortLabel})` : `${fallback} (${doc.shortLabel})`;
 }
 
+function formatAddress(fields = {}) {
+  const street = fields.streetAddress || fields.address || '';
+  const cityStateZip = [
+    fields.city,
+    [fields.state, fields.zip].filter(Boolean).join(' ')
+  ].filter(Boolean).join(', ');
+  return [street, cityStateZip].filter(Boolean).join(', ');
+}
