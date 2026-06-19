@@ -62,14 +62,17 @@ function blankJob() {
 }
 
 
+/* Resolve a document type, falling back to the configured default. */
 function getDocumentDefinition(type) {
   return DOCUMENT_TYPES[type] || DOCUMENT_TYPES[DEFAULT_DOCUMENT_TYPE];
 }
 
+/* Return the definition associated with the current draft. */
 function activeDocument() {
   return getDocumentDefinition(currentJob?.documentType);
 }
 
+/* Backfill required collections and discard obsolete local-signature fields. */
 function normalizeJob(job) {
   const out = job || blankJob();
   out.documentType = getDocumentDefinition(out.documentType).id;
@@ -91,6 +94,7 @@ function normalizeJob(job) {
   return out;
 }
 
+/* Populate the document selector from the central definitions map. */
 function populateDocumentTypeSelect() {
   els.documentTypeSelect.innerHTML = Object.values(DOCUMENT_TYPES)
     .map(doc => `<option value="${doc.id}">${escapeHtml(doc.label)}</option>`)
@@ -262,6 +266,7 @@ function bindEvents() {
   els.bottomSignedPdfBtn.addEventListener('click', generatePacket);
 }
 
+/* Run an async click action with consistent error reporting. */
 function bindAsyncClick(el, action, label) {
   el.addEventListener('click', async () => {
     try {
@@ -276,10 +281,12 @@ function bindAsyncClick(el, action, label) {
 
 /* Track unsaved changes and update status indicators */
 function isDirty() { return els.dirtyPill && !els.dirtyPill.classList.contains('saved'); }
+/* Update the draft-state badge after form or persistence changes. */
 function markDirty(dirty) {
   els.dirtyPill.textContent = dirty ? 'Unsaved' : 'Saved';
   els.dirtyPill.classList.toggle('saved', !dirty);
 }
+/* Mirror output status text to the sidebar and bottom action area. */
 function setStatus(message) {
   const text = message || '';
   if (els.outputStatus) els.outputStatus.textContent = text;
@@ -337,6 +344,7 @@ function hydrateForm(job) {
   markDirty(false);
 }
 
+/* Restore one saved checklist group into its rendered controls. */
 function hydrateItemGroup(kind, list, data) {
   list.forEach(item => {
     const row = data[item.id] || {};
@@ -350,6 +358,7 @@ function hydrateItemGroup(kind, list, data) {
   });
 }
 
+/* Locate the rendered input associated with a checklist definition. */
 function getItemControl(kind, item) {
   const prop = item.options ? 'selection' : 'value';
   return document.querySelector(`[data-kind="${kind}"][data-id="${item.id}"][data-prop="${prop}"]`);
@@ -401,12 +410,14 @@ async function loadDraftList() {
   });
 }
 
+/* Build the saved-draft label from customer, job, and document metadata. */
 function draftTitle(job, fallback = 'Untitled Document') {
   const doc = getDocumentDefinition(job?.documentType);
   const parts = [job?.fields?.jobNumberPhase, job?.fields?.customerName].filter(Boolean);
   return parts.length ? `${parts.join(' - ')} (${doc.shortLabel})` : `${fallback} (${doc.shortLabel})`;
 }
 
+/* Combine populated address fields into one compact display string. */
 function formatAddress(fields = {}) {
   const street = fields.streetAddress || fields.address || '';
   const cityStateZip = [

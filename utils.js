@@ -1,9 +1,11 @@
 'use strict';
 
+/* Create a collision-resistant local identifier with a readable prefix. */
 function createId(prefix) {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
+/* Register the offline app shell when service workers are supported. */
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch(err => console.warn('Service worker registration failed', err));
@@ -28,8 +30,13 @@ function asciiBytes(str) {
   return bytes;
 }
 
+/* Append ASCII text to a list of binary output chunks. */
 function pushAscii(chunks, str) { chunks.push(asciiBytes(str)); }
+
+/* Sum binary chunk lengths without allocating a combined buffer. */
 function byteLength(chunks) { return chunks.reduce((total, chunk) => total + chunk.length, 0); }
+
+/* Merge binary chunks into one contiguous byte array. */
 function concatBytes(chunks) {
   const out = new Uint8Array(byteLength(chunks));
   let offset = 0;
@@ -87,13 +94,6 @@ function formatBytes(bytes) {
   return `${n.toFixed(n >= 10 || i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
-function formatDateForPdf(value) {
-  if (!value) return '';
-  const [year, month, day] = String(value).split('-').map(Number);
-  if (!year || !month || !day) return value;
-  return `${month}/${day}/${year}`;
-}
-
 /* Create a filename safe for download by stripping invalid characters */
 function safeFilename(value) {
   return String(value || '')
@@ -103,9 +103,11 @@ function safeFilename(value) {
     .replace(/^-|-$/g, '')
     .slice(0, 60) || 'PreCon';
 }
+/* Escape user-provided text before inserting it into generated HTML. */
 function escapeHtml(value) {
    return String(value ?? '')
     .replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])); 
 }
+/* Delay repeated calls until activity has stopped for the given interval. */
 function debounce(fn, delay) {
    let timer; return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); }; }

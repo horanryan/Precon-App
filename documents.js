@@ -194,7 +194,6 @@ const DOCUMENT_TYPES = {
     filenameLabel: 'Precon',
     defaultFilename: 'PreCon',
     summaryPlaceholder: 'Enter pre-construction summary notes...',
-    signatureText: 'By signing below, customer acknowledges the Pre-Construction Checklist and all included selections, notes, and attachments.',
     fields: JOB_FIELDS,
     displayedWording: DISPLAYED_WORDING,
     groups: [
@@ -211,7 +210,6 @@ const DOCUMENT_TYPES = {
     filenameLabel: 'QC',
     defaultFilename: 'QualityControl',
     summaryPlaceholder: 'Enter quality control summary notes...',
-    signatureText: 'By signing below, customer acknowledges the Quality Control document and all included observations, correction items, notes, and attachments.',
     fields: QC_JOB_FIELDS,
     displayedWording: {},
     groups: [

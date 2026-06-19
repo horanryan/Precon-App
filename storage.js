@@ -3,6 +3,7 @@
 const DB_NAME = 'absolute-precon-offline-v2';
 const DB_VERSION = 1;
 let dbPromise;
+/* Open IndexedDB and create the job and photo stores on first use. */
 async function initDb() {
   dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
@@ -36,8 +37,13 @@ async function txStore(storeName, mode, callback) {
   });
 }
 
+/* Insert or replace one record in a named store. */
 async function putStore(storeName, value) { return txStore(storeName, 'readwrite', store => store.put(value)); }
+
+/* Delete one record by primary key from a named store. */
 async function deleteStore(storeName, id) { return txStore(storeName, 'readwrite', store => store.delete(id)); }
+
+/* Read every record from a named store. */
 async function getAll(storeName) {
   const db = await dbPromise;
   return new Promise((resolve, reject) => {
@@ -47,6 +53,7 @@ async function getAll(storeName) {
     req.onerror = () => reject(req.error);
   });
 }
+/* Retrieve one saved job, returning null when it no longer exists. */
 async function getJob(id) {
   const db = await dbPromise;
   return new Promise((resolve, reject) => {

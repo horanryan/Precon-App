@@ -1,6 +1,7 @@
 'use strict';
 
 const photoUrls = new Map();
+/* Load the current draft's photos in their persisted display order. */
 async function getCurrentPhotos() {
   const all = await getAll('photos');
   return all.filter(photo => photo.jobId === currentJob.id).sort((a, b) => (a.sortKey || 0) - (b.sortKey || 0));
@@ -130,11 +131,13 @@ async function updateStorageStatus() {
   const est = await navigator.storage.estimate();
   els.storageStatus.textContent = `Device app storage used: ${formatBytes(est.usage || 0)}${est.quota ? ` of about ${formatBytes(est.quota)}` : ''}. Photos are limited by device/browser storage.`;
 }
+/* Accept browser-declared images and common image filename extensions. */
 function isImageFile(file) {
   if (file.type && file.type.startsWith('image/')) return true;
   return /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(file.name || '');
 }
 
+/* Decode, orient, resize, and recompress an image for local storage. */
 async function resizeToJpegBlob(fileOrBlob, maxDim = 1800, quality = 0.78) {
   const url = URL.createObjectURL(fileOrBlob);
 
@@ -207,6 +210,7 @@ function canvasToJpegBlob(canvas, quality) {
     }, 'image/jpeg', quality);
   });
 }
+/* Resolve after a browser Image has decoded or reject on load failure. */
 function loadImage(src) {
   return new Promise((resolve, reject) => {
     const img = new Image();

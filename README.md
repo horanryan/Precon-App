@@ -15,11 +15,7 @@ It includes:
 - One Click Contractor-ready signature packet generation
 - Actual browser-side PDF generation with photo pages appended to the end
 
-The uploaded original PDF is included at:
-
-`assets/Pre-Construction-template.pdf`
-
-The current app recreates the packet as a generated PDF instead of trying to fill Acrobat fields. Dropdown choices were extracted from the original PDF form fields and should match the source PDF options exactly. That avoids iPad/Acrobat dropdown/image-field issues.
+The app recreates each packet as a generated PDF instead of filling an Acrobat template. This avoids iPad and Acrobat dropdown or image-field issues.
 
 ---
 
@@ -105,9 +101,6 @@ precon-offline-app/
 ├── sw.js
 ├── manifest.webmanifest
 ├── README.md
-├── assets/
-│   ├── icon.svg
-│   └── Pre-Construction-template.pdf
-└── server/
-    └── README-adobe-sign.md
+└── assets/
+    └── absolute-aluminum-logo.png
 ```

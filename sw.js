@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'precon-offline-app-v27';
+const CACHE_NAME = 'precon-offline-app-v29';
 const APP_SHELL = [
   './',
   './index.html',
@@ -13,8 +13,7 @@ const APP_SHELL = [
   './app.js',
   './manifest.webmanifest',
   './assets/icon.svg',
-  './assets/absolute-aluminum-logo.png',
-  './assets/Pre-Construction-template.pdf'
+  './assets/absolute-aluminum-logo.png'
 ];
 
 self.addEventListener('install', event => {
