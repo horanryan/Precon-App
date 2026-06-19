@@ -179,10 +179,10 @@ function itemDisplayValue(item, row) {
   return item.options ? row.selection || '' : row.value || '';
 }
 
-/* Give every checklist answer the same label-first, answer-below layout. */
+/* Size rows for wrapped answers plus enough bottom padding to clear the border. */
 function itemRowHeight(item, row) {
   const message = itemPdfMessage(item, row);
-  return Math.max(30, 17 + wrapText(message, 98).length * 9);
+  return Math.max(34, 24 + wrapText(message, 98).length * 9);
 }
 
 /* Add a table of checklist items to the PDF */
