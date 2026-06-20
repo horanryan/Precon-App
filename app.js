@@ -7,10 +7,10 @@
 /* Standard selections used in multiple checklist items */
 
 const REQUIRED_ELEMENT_IDS = [
-  'installBtn', 'newJobBtn', 'saveBtn', 'jobList', 'storageStatus', 'currentJobTitle', 'dirtyPill',
-  'documentTypeSelect', 'jobInfoFields', 'inspectionSectionTitle', 'inspectionItems', 'inHouseSectionTitle', 'inHouseItems',
+  'installBtn', 'newJobBtn', 'saveBtn', 'headerSignedPdfBtn', 'appLayout', 'savedDraftsPanel', 'jobList', 'currentJobTitle', 'dirtyPill',
+  'documentTypeTabs', 'jobInfoFields', 'inspectionSectionTitle', 'inspectionItems', 'inHouseSectionTitle', 'inHouseItems',
   'extraDocumentSections', 'summaryNotes', 'addPhotosBtn', 'photoInput', 'photoGrid',
-  'refreshPhotosBtn', 'clearPhotosBtn', 'signedPdfBtn', 'outputStatus',
+  'refreshPhotosBtn', 'clearPhotosBtn',
   'bottomSaveBtn', 'bottomSignedPdfBtn', 'bottomOutputStatus',
   'checklistForm'
 ];
@@ -23,14 +23,13 @@ const els = {};
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     cacheEls();
-    populateDocumentTypeSelect();
+    populateDocumentTypeTabs();
     renderFormShell();
     bindEvents();
     await initDb();
     hydrateForm(normalizeJob(currentJob));
     await loadDraftList();
     await renderPhotos();
-    await updateStorageStatus();
     registerServiceWorker();
   } catch (err) {
     console.error('App initialization failed', err);
@@ -94,17 +93,30 @@ function normalizeJob(job) {
   return out;
 }
 
-/* Populate the document selector from the central definitions map. */
-function populateDocumentTypeSelect() {
-  els.documentTypeSelect.innerHTML = Object.values(DOCUMENT_TYPES)
-    .map(doc => `<option value="${doc.id}">${escapeHtml(doc.label)}</option>`)
+/* Populate the document tabs from the central definitions map. */
+function populateDocumentTypeTabs() {
+  els.documentTypeTabs.innerHTML = Object.values(DOCUMENT_TYPES)
+    .map(doc => `<button class="document-type-tab" type="button" role="tab" data-document-type="${doc.id}" aria-controls="jobInfoFields" aria-selected="false" tabindex="-1">${escapeHtml(doc.label)}</button>`)
     .join('');
+}
+
+/* Keep the selected tab synchronized with the active document draft. */
+function updateDocumentTypeTabs(type) {
+  const activeType = getDocumentDefinition(type).id;
+  const tabs = Array.from(els.documentTypeTabs.querySelectorAll('[data-document-type]'));
+  tabs.forEach(tab => {
+    const selected = tab.dataset.documentType === activeType;
+    tab.classList.toggle('active', selected);
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+  });
+  els.documentTypeTabs.classList.toggle('second-tab-active', tabs.findIndex(tab => tab.dataset.documentType === activeType) === 1);
 }
 
 /* Build the form UI from the checklist definitions */
 function renderFormShell() {
   const doc = activeDocument();
-  els.documentTypeSelect.value = doc.id;
+  updateDocumentTypeTabs(doc.id);
   els.inspectionSectionTitle.textContent = doc.groups[0]?.title || 'Document Items';
   els.inHouseSectionTitle.textContent = doc.groups[1]?.title || 'Additional Items';
   els.summaryNotes.placeholder = doc.summaryPlaceholder || 'Enter summary notes...';
@@ -206,33 +218,47 @@ function bindEvents() {
 
   els.newJobBtn.addEventListener('click', async () => {
     if (isDirty() && !confirm('Start a new document? Unsaved changes will be lost.')) return;
+    const documentType = activeDocument().id;
     currentJob = blankJob();
-    currentJob.documentType = els.documentTypeSelect.value || DEFAULT_DOCUMENT_TYPE;
+    currentJob.documentType = documentType;
     hydrateForm(currentJob);
     await renderPhotos();
     markDirty(false);
   });
 
-  els.documentTypeSelect.addEventListener('change', async () => {
-    const nextType = els.documentTypeSelect.value || DEFAULT_DOCUMENT_TYPE;
-    if (nextType === currentJob.documentType) return;
-    if (isDirty() && !confirm('Switch document type? Unsaved changes in this draft will be lost.')) {
-      els.documentTypeSelect.value = currentJob.documentType;
-      return;
+  els.documentTypeTabs.addEventListener('click', async event => {
+    const tab = event.target.closest('[data-document-type]');
+    if (!tab) return;
+    try {
+      const switched = await switchDocumentType(tab.dataset.documentType);
+      if (!switched) els.documentTypeTabs.querySelector('[aria-selected="true"]')?.focus();
+    } catch (err) {
+      console.error('Document type switch failed', err);
+      setStatus(`Could not switch document type: ${err.message || 'unknown error'}`);
     }
-
-    const previous = collectJobFromForm(currentJob.documentType);
-    const nextJob = blankJob();
-    nextJob.documentType = nextType;
-    ['customerName', 'streetAddress', 'city', 'state', 'zip', 'address', 'email', 'phone', 'jobNumberPhase', 'gateCode'].forEach(id => {
-      if (previous.fields?.[id]) nextJob.fields[id] = previous.fields[id];
-    });
-    currentJob = nextJob;
-    renderFormShell();
-    hydrateForm(currentJob);
-    await renderPhotos();
-    markDirty(true);
   });
+
+  els.documentTypeTabs.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    const tabs = Array.from(els.documentTypeTabs.querySelectorAll('[data-document-type]'));
+    const currentIndex = tabs.indexOf(event.target.closest('[data-document-type]'));
+    if (currentIndex < 0) return;
+    event.preventDefault();
+    const nextIndex = event.key === 'Home' ? 0
+      : event.key === 'End' ? tabs.length - 1
+      : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+    tabs[nextIndex].focus();
+    tabs[nextIndex].click();
+  });
+
+  els.savedDraftsPanel.addEventListener('toggle', () => {
+    els.appLayout.classList.toggle('drafts-collapsed', !els.savedDraftsPanel.open);
+    els.savedDraftsPanel.querySelector('summary').title = els.savedDraftsPanel.open ? 'Hide Saved Drafts' : 'Show Saved Drafts';
+    els.savedDraftsPanel.querySelector('.saved-drafts-toggle-label').textContent = els.savedDraftsPanel.open ? 'Collapse' : 'Expand';
+  });
+  els.appLayout.classList.toggle('drafts-collapsed', !els.savedDraftsPanel.open);
+  els.savedDraftsPanel.querySelector('summary').title = els.savedDraftsPanel.open ? 'Hide Saved Drafts' : 'Show Saved Drafts';
+  els.savedDraftsPanel.querySelector('.saved-drafts-toggle-label').textContent = els.savedDraftsPanel.open ? 'Collapse' : 'Expand';
 
   bindAsyncClick(els.saveBtn, saveCurrentDraft, 'Save failed');
   els.checklistForm.addEventListener('input', () => markDirty(true));
@@ -263,7 +289,6 @@ function bindEvents() {
       const photos = await getCurrentPhotos();
       for (const photo of photos) await deleteStore('photos', photo.id);
       await renderPhotos();
-      await updateStorageStatus();
       markDirty(true);
     } catch (err) {
       console.error('Photo clearing failed', err);
@@ -271,9 +296,28 @@ function bindEvents() {
     }
   });
 
-  els.signedPdfBtn.addEventListener('click', generatePacket);
+  els.headerSignedPdfBtn.addEventListener('click', generatePacket);
   bindAsyncClick(els.bottomSaveBtn, saveCurrentDraft, 'Save failed');
   els.bottomSignedPdfBtn.addEventListener('click', generatePacket);
+}
+
+/* Change packet types while retaining shared customer and job details. */
+async function switchDocumentType(nextType) {
+  nextType = getDocumentDefinition(nextType).id;
+  if (nextType === currentJob.documentType) return true;
+  if (isDirty() && !confirm('Switch document type? Unsaved changes in this draft will be lost.')) return false;
+
+  const previous = collectJobFromForm(currentJob.documentType);
+  const nextJob = blankJob();
+  nextJob.documentType = nextType;
+  ['customerName', 'streetAddress', 'city', 'state', 'zip', 'address', 'email', 'phone', 'jobNumberPhase', 'gateCode'].forEach(id => {
+    if (previous.fields?.[id]) nextJob.fields[id] = previous.fields[id];
+  });
+  currentJob = nextJob;
+  hydrateForm(currentJob);
+  await renderPhotos();
+  markDirty(false);
+  return true;
 }
 
 /* Run an async click action with consistent error reporting. */
@@ -299,14 +343,13 @@ function markDirty(dirty) {
 /* Mirror output status text to the sidebar and bottom action area. */
 function setStatus(message) {
   const text = message || '';
-  if (els.outputStatus) els.outputStatus.textContent = text;
   if (els.bottomOutputStatus) els.bottomOutputStatus.textContent = text;
 }
 
 /* Build the job object from current form values */
 function collectJobFromForm(documentTypeOverride = null) {
   const job = normalizeJob(currentJob || blankJob());
-  const doc = getDocumentDefinition(documentTypeOverride || els.documentTypeSelect.value || job.documentType);
+  const doc = getDocumentDefinition(documentTypeOverride || job.documentType);
   job.documentType = doc.id;
   job.updatedAt = new Date().toISOString();
   job.fields = {};
@@ -343,7 +386,7 @@ function hydrateForm(job) {
   currentJob = normalizeJob(job);
   renderFormShell();
   const doc = activeDocument();
-  els.documentTypeSelect.value = doc.id;
+  updateDocumentTypeTabs(doc.id);
   doc.fields.forEach(field => {
     const el = document.getElementById(`field_${field.id}`);
     if (el) el.value = currentJob.fields?.[field.id] || field.defaultValue || '';
@@ -379,7 +422,6 @@ async function saveCurrentDraft() {
   currentJob = collectJobFromForm();
   await putStore('jobs', currentJob);
   await loadDraftList();
-  await updateStorageStatus();
   hydrateForm(currentJob);
   setStatus(`Saved draft at ${new Date().toLocaleTimeString()}.`);
 }
@@ -440,7 +482,6 @@ async function loadDraftList() {
         }
 
         await loadDraftList();
-        await updateStorageStatus();
         setStatus(`Deleted draft: ${title}.`);
       } catch (err) {
         console.error('Draft deletion failed', err);

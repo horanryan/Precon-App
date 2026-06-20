@@ -46,7 +46,6 @@ async function addPhotoFiles(files) {
   }
 
   await renderPhotos();
-  await updateStorageStatus();
 
   if (added && failed) setStatus(`Added ${added} photo(s). ${failed} file(s) could not be imported.`);
   else if (added) setStatus(`Added ${added} photo(s).`);
@@ -96,7 +95,6 @@ async function renderPhotos() {
       try {
         await deleteStore('photos', photo.id);
         await renderPhotos();
-        await updateStorageStatus();
       } catch (err) {
         console.error('Photo removal failed', err);
         setStatus(`Could not remove photo: ${err.message || 'unknown error'}`);
@@ -121,16 +119,6 @@ async function swapPhotoSort(a, b) {
   await renderPhotos();
 }
 
-/* Display approximate device storage usage if available */
-async function updateStorageStatus() {
-  if (!navigator.storage?.estimate) {
-    els.storageStatus.textContent = 'Photos are saved locally on this device.';
-    return;
-  }
-
-  const est = await navigator.storage.estimate();
-  els.storageStatus.textContent = `Device app storage used: ${formatBytes(est.usage || 0)}${est.quota ? ` of about ${formatBytes(est.quota)}` : ''}. Photos are limited by device/browser storage.`;
-}
 /* Accept browser-declared images and common image filename extensions. */
 function isImageFile(file) {
   if (file.type && file.type.startsWith('image/')) return true;

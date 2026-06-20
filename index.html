@@ -15,30 +15,40 @@
       <div>
         <p class="eyebrow">Document Builder</p>
         <h1>Field Checklist</h1>
-        <p class="muted">Offline drafts, unlimited photos by device storage, pre-signature packet output.</p>
       </div>
+    </div>
+    <div class="header-document-tabs">
+      <span class="sr-only" id="documentTypeLabel">Document Type</span>
+      <div id="documentTypeTabs" class="document-type-tabs" role="tablist" aria-labelledby="documentTypeLabel"></div>
     </div>
     <div class="header-actions">
       <button id="installBtn" class="secondary hidden" type="button">Install App</button>
-      <button id="newJobBtn" class="secondary" type="button">New Document</button>
-      <button id="saveBtn" type="button">Save Draft</button>
     </div>
   </header>
 
-  <main class="layout">
-    <aside class="sidebar">
-      <section class="card">
-        <h2>Saved Drafts</h2>
-        <div id="storageStatus" class="storage-status">Checking storage...</div>
-        <div id="jobList" class="draft-list"></div>
-      </section>
+  <nav class="sticky-command-bar" aria-label="Document controls">
+    <div class="header-controls">
+      <div class="header-actions">
+        <button id="newJobBtn" class="secondary" type="button">New Document</button>
+        <button id="saveBtn" type="button">Save Draft</button>
+        <button id="headerSignedPdfBtn" class="tertiary" type="button">Download PDF</button>
+      </div>
+    </div>
+  </nav>
 
-      <section class="card compact-card">
-        <h2>Packet Output</h2>
-        <button id="signedPdfBtn" class="full" type="button">Download PDF Packet</button>
-        <p class="muted small">The PDF includes One Click Contractor signature and date placeholders.</p>
-        <div id="outputStatus" class="status-box"></div>
-      </section>
+  <main id="appLayout" class="layout">
+    <aside class="sidebar">
+      <details id="savedDraftsPanel" class="card saved-drafts-card" open>
+        <summary title="Hide Saved Drafts">
+          <span class="saved-drafts-title">Saved Drafts</span>
+          <span class="saved-drafts-toggle">
+            <span class="saved-drafts-toggle-label">Collapse</span>
+          </span>
+        </summary>
+        <div class="saved-drafts-content">
+          <div id="jobList" class="draft-list"></div>
+        </div>
+      </details>
     </aside>
 
     <section class="content">
@@ -52,10 +62,6 @@
             </div>
             <div class="pill" id="dirtyPill">Unsaved</div>
           </div>
-          <label class="field document-type-field">
-            <span>Document Type</span>
-            <select id="documentTypeSelect"></select>
-          </label>
           <div id="jobInfoFields" class="grid two"></div>
         </section>
 

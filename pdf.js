@@ -36,9 +36,9 @@ async function generatePacket() {
 function packetFilename(job) {
   const doc = getDocumentDefinition(job.documentType);
   const jobNumberPhase = String(job.fields?.jobNumberPhase || '').trim();
-  const jobNum = jobNumberPhase.match(/^\d+/)?.[0] || safeFilename(doc.defaultFilename);
+  const jobNum = jobNumberPhase.match(/^\d+/)?.[0] || '';
   const customer = safeFilename(job.fields?.customerName || 'Customer');
-  return `${customer}_${jobNum}_${doc.filenameLabel}.pdf`;
+  return `${[customer, jobNum, doc.filenameLabel].filter(Boolean).join('_')}.pdf`;
 }
 
 /* Build the PDF document structure for the selected packet */
