@@ -128,13 +128,13 @@ const QC_JOB_FIELDS = [
       'N/A',
       'Sean & Javier',
       'Rich & Freddy',
-      'Alex L, Eddie I and Eddie III',
-      'Marco & Roger',
-      'Manuel & Yael',
-      'Alejandro',
-      'Misael and Armando',
+      'Alex L, Eddie I and Eddie II',
+      'Marco & Roger',      
+      'Manuel,Yael & Uriel',
+      'Alejandro, Misael & Armando',
       'Adam E',
-      'Josh F'
+      'Josh F',
+      'Tim R'
     ]
   },
   { id: 'concreteCrew', label: 'Concrete Crew', options: ['', 'Canine Concrete', 'Wagle Concrete'] }
