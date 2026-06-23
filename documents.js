@@ -45,7 +45,7 @@ const JOB_FIELDS = [
   { id: 'phone', label: 'Phone #', type: 'tel' },
   { id: 'jobNumberPhase', label: 'Job # and Phase', type: 'text' },
   { id: 'gateCode', label: 'Gate Code', type: 'text' },
-  { id: 'preconSpecialist', label: 'Pre-Construction Specialist', type: 'text' }
+  { id: 'preconSpecialist', label: 'Pre-Construction Specialist', type: 'text', defaultValue: 'Mark Popp' }
 ];
 
 const INSPECTION_ITEMS = [
@@ -120,7 +120,7 @@ const QC_JOB_FIELDS = [
   { id: 'phone', label: 'Phone #', type: 'tel' },
   { id: 'jobNumberPhase', label: 'Job # and Phase', type: 'text' },
   { id: 'gateCode', label: 'Gate Code', type: 'text' },
-  { id: 'qcSpecialist', label: 'QC Specialist', type: 'text' },
+  { id: 'qcSpecialist', label: 'QC Specialist', type: 'text', defaultValue: 'Rich Shroka' },
   {
     id: 'installCrew',
     label: 'Install Crew',
@@ -137,7 +137,7 @@ const QC_JOB_FIELDS = [
       'Josh F'
     ]
   },
-  { id: 'concreteCrew', label: 'Concrete Crew', options: ['Canine Concrete', 'Wagle Concrete'] }
+  { id: 'concreteCrew', label: 'Concrete Crew', options: ['', 'Canine Concrete', 'Wagle Concrete'] }
 ];
 
 const QC_INSPECTION_ITEMS = [

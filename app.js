@@ -76,7 +76,21 @@ function normalizeJob(job) {
   const out = job || blankJob();
   out.documentType = getDocumentDefinition(out.documentType).id;
   out.fields = out.fields || {};
-  if (!out.fields.streetAddress && out.fields.address) out.fields.streetAddress = out.fields.address;
+  if (!Object.prototype.hasOwnProperty.call(out.fields, 'streetAddress')
+    && out.fields.address
+    && !out.fields.city
+    && !out.fields.state
+    && !out.fields.zip) {
+    out.fields.streetAddress = out.fields.address;
+  }
+  const stateOnlyAddress = (out.fields.state || '').trim().toUpperCase();
+  if (stateOnlyAddress
+    && (out.fields.streetAddress || '').trim().toUpperCase() === stateOnlyAddress
+    && (out.fields.address || '').trim().toUpperCase() === stateOnlyAddress
+    && !(out.fields.city || '').trim()
+    && !(out.fields.zip || '').trim()) {
+    out.fields.streetAddress = '';
+  }
   out.items = out.items || {};
   out.inHouse = out.inHouse || {};
   out.gutters = out.gutters || {};
@@ -110,7 +124,6 @@ function updateDocumentTypeTabs(type) {
     tab.setAttribute('aria-selected', String(selected));
     tab.tabIndex = selected ? 0 : -1;
   });
-  els.documentTypeTabs.classList.toggle('second-tab-active', tabs.findIndex(tab => tab.dataset.documentType === activeType) === 1);
 }
 
 /* Build the form UI from the checklist definitions */
@@ -140,7 +153,7 @@ function renderFormShell() {
 function renderJobFieldControl(field) {
   if (field.options) {
     return `<select id="field_${field.id}" data-kind="job-field" data-id="${field.id}">
-      ${field.options.map(option => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join('')}
+      ${clearableOptions(field.options).map(option => `<option value="${escapeHtml(option)}">${escapeHtml(option || 'Select...')}</option>`).join('')}
     </select>`;
   }
   return `<input id="field_${field.id}" data-kind="job-field" data-id="${field.id}" type="${field.type || 'text'}"${field.autocomplete ? ` autocomplete="${field.autocomplete}"` : ''}${field.inputMode ? ` inputmode="${field.inputMode}"` : ''}${field.maxLength ? ` maxlength="${field.maxLength}"` : ''}${field.placeholder ? ` placeholder="${escapeHtml(field.placeholder)}"` : ''}>`;
@@ -167,10 +180,15 @@ function renderSelectControl(item, kind) {
     <label class="field">
       <span>Selection</span>
       <select data-kind="${kind}" data-id="${item.id}" data-prop="selection">
-        ${item.options.map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt || 'Select...')}</option>`).join('')}
+        ${clearableOptions(item.options).map(opt => `<option value="${escapeHtml(opt)}">${escapeHtml(opt || 'Select...')}</option>`).join('')}
       </select>
     </label>
   `;
+}
+
+/* Ensure every dropdown can be returned to an unselected state. */
+function clearableOptions(options) {
+  return options.includes('') ? options : ['', ...options];
 }
 
 /* Render a free-form text area for value-based checklist items */
@@ -503,7 +521,10 @@ function draftTitle(job, fallback = 'Untitled Document') {
 
 /* Combine populated address fields into one compact display string. */
 function formatAddress(fields = {}) {
-  const street = fields.streetAddress || fields.address || '';
+  const street = Object.prototype.hasOwnProperty.call(fields, 'streetAddress')
+    ? fields.streetAddress || ''
+    : fields.address || '';
+  if (!street && !fields.city && !fields.zip) return '';
   const cityStateZip = [
     fields.city,
     [fields.state, fields.zip].filter(Boolean).join(' ')

@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'precon-app-v33';
+const CACHE_NAME = 'precon-app-v38';
 const APP_SHELL = [
   './',
   './index.html',

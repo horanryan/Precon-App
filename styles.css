@@ -331,32 +331,10 @@ button.full { width: 100%; margin-bottom: .75rem; }
 }
 
 .app-header .document-type-tabs {
-  position: relative;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: .3rem;
   border-color: var(--blue-2);
   background: var(--blue);
-  overflow: hidden;
-  isolation: isolate;
-}
-
-.app-header .document-type-tabs::before {
-  content: '';
-  position: absolute;
-  z-index: 0;
-  top: .3rem;
-  bottom: .3rem;
-  left: .3rem;
-  width: calc((100% - 1.25rem) / 2);
-  border: 1px solid var(--lime);
-  border-radius: 8px;
-  background: var(--blue-2);
-  box-shadow: 0 6px 14px rgba(0, 146, 188, .22);
-  transition: transform 450ms cubic-bezier(.22, 1, .36, 1);
-}
-
-.app-header .document-type-tabs.second-tab-active::before {
-  transform: translateX(calc(100% + .65rem));
 }
 
 .document-type-tab {
@@ -386,21 +364,19 @@ button.full { width: 100%; margin-bottom: .75rem; }
 }
 
 .app-header .document-type-tab {
-  z-index: 1;
   min-height: 44px;
   color: white;
-  transition: color 180ms ease;
+  transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 .app-header .document-type-tab:hover { background: rgba(255, 255, 255, .12); }
 .app-header .document-type-tab.active {
-  border-color: transparent;
-  background: transparent;
+  border-color: var(--lime);
+  background: var(--blue-2);
   color: white;
-  box-shadow: none;
+  box-shadow: 0 6px 14px rgba(0, 146, 188, .22);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .app-header .document-type-tabs::before { transition: none; }
   .layout,
   .saved-drafts-card,
   .saved-drafts-card::details-content { transition: none; }
