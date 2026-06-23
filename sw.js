@@ -1,6 +1,6 @@
 'use strict';
 
-const CACHE_NAME = 'precon-app-v32';
+const CACHE_NAME = 'precon-app-v33';
 const APP_SHELL = [
   './',
   './index.html',
@@ -12,6 +12,12 @@ const APP_SHELL = [
   './pdf.js',
   './app.js',
   './manifest.webmanifest',
+  './assets/fonts/Arlen-Light.otf',
+  './assets/fonts/Arlen-Regular.otf',
+  './assets/fonts/Arlen-Bold.otf',
+  './assets/fonts/Alkaline-Bold.woff2',
+  './assets/fonts/DIN-Condensed-Variable.woff2',
+  './assets/fonts/SpicyRice-Regular.ttf',
   './assets/absolute-aluminum_badge-color.svg',
   './assets/apple-touch-icon.png',
   './assets/absolute-aluminum-logo.png'
