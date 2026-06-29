@@ -257,7 +257,6 @@ function addSignatureBlock(page, job, y) {
 async function addPhotoPages(doc, job, photos) {
   if (!photos.length) return;
 
-  const photoPrefix = job.documentType === 'qualityControl' ? 'Completion' : 'Precon';
   for (let i = 0; i < photos.length; i += 3) {
     const page = newPdfPage(doc.logo);
     const slots = [
@@ -270,13 +269,23 @@ async function addPhotoPages(doc, job, photos) {
       const photo = photos[i + j];
       const image = await photoToJpegImage(photo, 1700, 0.74);
       const slot = slots[j];
-      text(page, photo.caption || `${photoPrefix} ${i + j + 1}`, slot.x, slot.y + 10, 9, 'F2', PDF_COLORS.gray);
+      text(page, photoLabel(job, photo, i + j + 1), slot.x, slot.y + 10, 9, 'F2', PDF_COLORS.gray);
       const fit = fitRect(image.width, image.height, slot.w, slot.h - 16);
       imageOnPage(page, image, slot.x, slot.y + 16, fit.w, fit.h);
     }
 
     doc.pages.push(page);
   }
+}
+
+/* Label QC photos as Photo N, with optional caption text after the number. */
+function photoLabel(job, photo, number) {
+  const caption = String(photo.caption || '').trim();
+  if (job.documentType === 'qualityControl') {
+    const base = `Photo ${number}`;
+    return caption ? `${base}: ${caption}` : base;
+  }
+  return caption || `Precon ${number}`;
 }
 
 /* Place an image object on a PDF page */

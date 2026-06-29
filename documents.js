@@ -48,6 +48,20 @@ const JOB_FIELDS = [
   { id: 'preconSpecialist', label: 'Pre-Construction Specialist', type: 'text', defaultValue: 'Mark Popp' }
 ];
 
+const INSTALL_CREW_OPTIONS = [
+  'N/A',
+  'Sean & Javier',
+  'Rich & Freddy',
+  'Alex L, Eddie I and Eddie II',
+  'Marco & Roger',
+  'Manuel,Yael & Uriel',
+  'Alejandro, Misael & Armando',
+  'Adam E',
+  'Josh F',
+  'Tim R',
+  'Basillio'
+];
+
 const INSPECTION_ITEMS = [
   { id: 'irrigationLines', label: 'Irrigation Lines', options: CUSTOMER_ACK_OPTIONS },
   { id: 'bushes', label: 'Bushes', options: CUSTOMER_ACK_OPTIONS },
@@ -124,18 +138,28 @@ const QC_JOB_FIELDS = [
   {
     id: 'installCrew',
     label: 'Install Crew',
-    options: [
-      'N/A',
-      'Sean & Javier',
-      'Rich & Freddy',
-      'Alex L, Eddie I and Eddie II',
-      'Marco & Roger',      
-      'Manuel,Yael & Uriel',
-      'Alejandro, Misael & Armando',
-      'Adam E',
-      'Josh F',
-      'Tim R'
-    ]
+    options: INSTALL_CREW_OPTIONS
+  },
+  {
+    id: 'installCrew2',
+    label: 'Install Crew 2',
+    options: INSTALL_CREW_OPTIONS,
+    additionalInstallCrew: true,
+    previousCrewField: 'installCrew'
+  },
+  {
+    id: 'installCrew3',
+    label: 'Install Crew 3',
+    options: INSTALL_CREW_OPTIONS,
+    additionalInstallCrew: true,
+    previousCrewField: 'installCrew2'
+  },
+  {
+    id: 'installCrew4',
+    label: 'Install Crew 4',
+    options: INSTALL_CREW_OPTIONS,
+    additionalInstallCrew: true,
+    previousCrewField: 'installCrew3'
   },
   { id: 'concreteCrew', label: 'Concrete Crew', options: ['', 'Canine Concrete', 'Wagle Concrete', 'Level Up Innovations'] }
 ];
@@ -149,7 +173,6 @@ const QC_INSPECTION_ITEMS = [
   { id: 'screwProtecCapsComplete', label: 'Screw/Protec caps fasteners are complete', options: ['', 'Yes', 'No'] },
   { id: 'caulkingInsideOutside', label: 'Caulking is applied inside and outside', options: ['', 'Yes', 'No'] },
   { id: 'ezCleansProperlyInstalled', label: 'EZ Cleans are properly installed', options: ['', 'Yes', 'No'] },
-  { id: 'openAreasGapsAddressed', label: 'Open area or gaps have been addressed', options: ['', 'Yes', 'No'] },
   { id: 'beamCapsInstalledProperly', label: 'Beam caps installed properly', options: ['', 'Yes', 'No'] },
   { id: 'screenFreeOfDefects', label: 'Screen is free of defects, wrinkles, and bubbles', options: ['', 'Yes', 'No'] },
   { id: 'cableNutsTightNoPaverRub', label: 'Cable is and cable nuts are tight and not rubbing on pavers', options: ['', 'Yes', 'No'] },
@@ -177,7 +200,6 @@ const QC_PERGOLA_PAN6_ITEMS = [
   { id: 'screwProtecCapsCompletePergola', label: 'Screw/Protec caps fasteners are complete', options: ['', 'Yes', 'No'] },
   { id: 'caulkingInsideOutsidePergola', label: 'Caulking is applied inside and outside', options: ['', 'Yes', 'No'] },
   { id: 'ezCleansProperlyInstalledPergola', label: 'EZ cleans are properly installed', options: ['', 'Yes', 'No'] },
-  { id: 'openAreasGapsAddressedPergola', label: 'Open areas or gaps have been addressed', options: ['', 'Yes', 'No'] },
   { id: 'screenFreeOfDefectsPergola', label: 'Screen is free of defects, wrinkles & bubbles', options: ['', 'Yes', 'No'] },
   { id: 'retractableScreensOperationalPergola', label: 'Retractable screens are operational', options: ['', 'Yes', 'No'] }
 ];
@@ -185,19 +207,26 @@ const QC_PERGOLA_PAN6_ITEMS = [
 const QC_GENERAL_ITEMS = [
   { id: 'jobSiteClean', label: 'Job Site Clean', options: ['', 'Yes', 'No'] },
   { id: 'completionPerContract', label: 'Completion of Job per Contract', options: ['', 'Yes', 'No'] },
-  { id: 'permitPosted', label: 'Permit Posted', options: ['', 'Yes', 'No'] },
+  { id: 'permitPosted', label: 'Permit Posted', options: ['', 'Yes', 'No', 'N/A'] },
   { id: 'overallSatisfaction', label: 'Overall Satisfaction', options: ['', 'Yes', 'No'] },
   { id: 'surveys', label: 'Surveys', options: ['', 'Yes', 'No'] },
-  { id: 'paymentCollected', label: 'Payment Collected', options: ['', 'Yes', 'No'] },
+  { id: 'paymentCollected', label: 'Payment Collected', options: ['', 'Yes', 'No', 'N/A'] },
   { id: 'tervisTumblers', label: 'Tervis Tumblers', options: ['', 'Yes', 'No'] }
 ];
 
-const QC_CORRECTIVE_ITEMS = [
-  { id: 'openItems', label: 'Open Correction Items', input: 'text' },
-  { id: 'assignedTo', label: 'Assigned To', input: 'text' },
-  { id: 'targetCompletionDate', label: 'Target Completion Date', input: 'text' },
-  { id: 'followUpRequired', label: 'Follow-Up Required', options: ['', 'Yes', 'No'] },
-  { id: 'finalQcStatus', label: 'Final QC Status', options: ['', 'Passed', 'Passed With Corrections', 'Failed / Needs Return Visit'] }
+const QC_INSPECTION_RESULT_ITEMS = [
+  {
+    id: 'inspectionResults',
+    label: 'Inspection Results',
+    options: [
+      'N/A',
+      'GTG, Call in for county inspection',
+      'GTG, no county inspection required',
+      'Punch List Required Before County Inspection',
+      'Call in for inspection after permit is posted'
+    ]
+  },
+  { id: 'punchListScheduleWeekOf', label: 'Punch List Schedule week of', type: 'date' }
 ];
 
 const DOCUMENT_TYPES = {
@@ -233,7 +262,7 @@ const DOCUMENT_TYPES = {
       { key: 'gutters', title: 'Gutters', pdfTitle: 'GUTTERS', continuedTitle: 'Gutters continued', items: QC_GUTTER_ITEMS },
       { key: 'pergolaPan6', title: 'Pergola & Pan6', pdfTitle: 'PERGOLA & PAN6', continuedTitle: 'Pergola & Pan6 continued', items: QC_PERGOLA_PAN6_ITEMS },
       { key: 'general', title: 'General Section', pdfTitle: 'GENERAL SECTION', continuedTitle: 'General Section continued', items: QC_GENERAL_ITEMS },
-      { key: 'inHouse', title: 'Corrections / Follow-Up', pdfTitle: 'CORRECTIONS / FOLLOW-UP', continuedTitle: 'Corrections / Follow-Up continued', items: QC_CORRECTIVE_ITEMS }
+      { key: 'inHouse', title: 'Inspection Results', pdfTitle: 'INSPECTION RESULTS', continuedTitle: 'Inspection Results continued', items: QC_INSPECTION_RESULT_ITEMS }
     ]
   }
 };

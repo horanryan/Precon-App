@@ -134,7 +134,7 @@ function renderFormShell() {
   els.inHouseSectionTitle.textContent = doc.groups[1]?.title || 'Additional Items';
   els.summaryNotes.placeholder = doc.summaryPlaceholder || 'Enter summary notes...';
   els.jobInfoFields.innerHTML = doc.fields.map(field => `
-    <label class="field ${field.fullWidth ? 'full-field' : ''}">
+    <label class="field ${field.fullWidth ? 'full-field' : ''} ${field.additionalInstallCrew ? 'hidden' : ''}"${field.additionalInstallCrew ? ' data-additional-install-crew="true"' : ''}>
       <span>${escapeHtml(field.label)}</span>
       ${renderJobFieldControl(field)}
     </label>
@@ -193,6 +193,14 @@ function clearableOptions(options) {
 
 /* Render a free-form text area for value-based checklist items */
 function renderTextControl(item, kind) {
+  if (item.type === 'date') {
+    return `
+      <label class="field full-field">
+        <span>Value</span>
+        <input type="date" data-kind="${kind}" data-id="${item.id}" data-prop="value">
+      </label>
+    `;
+  }
   return `
     <label class="field full-field">
       <span>Value</span>
@@ -280,7 +288,10 @@ function bindEvents() {
 
   bindAsyncClick(els.saveBtn, saveCurrentDraft, 'Save failed');
   els.checklistForm.addEventListener('input', () => markDirty(true));
-  els.checklistForm.addEventListener('change', () => markDirty(true));
+  els.checklistForm.addEventListener('change', event => {
+    if (event.target?.matches('[data-kind="job-field"]')) updateAdditionalInstallCrewFields();
+    markDirty(true);
+  });
 
   els.addPhotosBtn.addEventListener('click', () => {
     els.photoInput.value = '';
@@ -372,7 +383,7 @@ function collectJobFromForm(documentTypeOverride = null) {
   job.updatedAt = new Date().toISOString();
   job.fields = {};
   doc.fields.forEach(field => {
-    job.fields[field.id] = document.getElementById(`field_${field.id}`)?.value.trim() || '';
+    job.fields[field.id] = jobFieldValueForSave(field);
   });
   job.fields.state = (job.fields.state || '').toUpperCase();
   job.fields.address = formatAddress(job.fields);
@@ -412,7 +423,35 @@ function hydrateForm(job) {
   doc.groups.forEach(group => hydrateItemGroup(group.key, group.items, currentJob[group.key] || {}));
   els.summaryNotes.value = currentJob.summaryNotes || '';
   els.currentJobTitle.textContent = draftTitle(currentJob, 'New Document');
+  updateAdditionalInstallCrewFields();
   markDirty(false);
+}
+
+/* Reveal each additional install crew only after the previous crew is populated. */
+function updateAdditionalInstallCrewFields() {
+  activeDocument().fields
+    .filter(field => field.additionalInstallCrew)
+    .forEach(field => {
+      const el = document.getElementById(`field_${field.id}`);
+      const previousEl = document.getElementById(`field_${field.previousCrewField}`);
+      const shouldShow = isCrewSelection(previousEl?.value);
+      el?.closest('.field')?.classList.toggle('hidden', !shouldShow);
+      if (!shouldShow && el) el.value = '';
+    });
+}
+
+/* Treat blank and N/A as non-crews for staged additional install crew fields. */
+function isCrewSelection(value) {
+  const normalized = String(value || '').trim();
+  return normalized && normalized !== 'N/A';
+}
+
+/* Hidden staged install crew fields should not keep stale values. */
+function jobFieldValueForSave(field) {
+  const el = document.getElementById(`field_${field.id}`);
+  if (!el) return '';
+  if (field.additionalInstallCrew && el.closest('.field')?.classList.contains('hidden')) return '';
+  return el.value.trim();
 }
 
 /* Restore one saved checklist group into its rendered controls. */
