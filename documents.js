@@ -223,6 +223,7 @@ const QC_INSPECTION_RESULT_ITEMS = [
       'GTG, Call in for county inspection',
       'GTG, no county inspection required',
       'Punch List Required Before County Inspection',
+      'Permit needs revise before Inspection',
       'Call in for inspection after permit is posted'
     ]
   },
