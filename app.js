@@ -15,6 +15,8 @@ const REQUIRED_ELEMENT_IDS = [
   'checklistForm'
 ];
 
+const SESSION_JOB_KEY = 'absolute-aluminum-current-job';
+
 let currentJob = blankJob();
 let deferredInstallPrompt = null;
 const els = {};
@@ -27,7 +29,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     renderFormShell();
     bindEvents();
     await initDb();
-    hydrateForm(normalizeJob(currentJob));
+    hydrateForm(normalizeJob(readCurrentJobSnapshot() || currentJob));
     await loadDraftList();
     await renderPhotos();
     registerServiceWorker();
@@ -286,6 +288,11 @@ function bindEvents() {
   els.savedDraftsPanel.querySelector('summary').title = els.savedDraftsPanel.open ? 'Hide Saved Drafts' : 'Show Saved Drafts';
   els.savedDraftsPanel.querySelector('.saved-drafts-toggle-label').textContent = els.savedDraftsPanel.open ? 'Collapse' : 'Expand';
 
+  window.addEventListener('pagehide', writeCurrentJobSnapshot);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') writeCurrentJobSnapshot();
+  });
+
   bindAsyncClick(els.saveBtn, saveCurrentDraft, 'Save failed');
   els.checklistForm.addEventListener('input', () => markDirty(true));
   els.checklistForm.addEventListener('change', event => {
@@ -410,6 +417,27 @@ function collectItemGroup(kind, list) {
   return out;
 }
 
+/* Store a same-tab form snapshot so iOS PDF preview back navigation can restore it. */
+function writeCurrentJobSnapshot(job = null) {
+  try {
+    const snapshot = job || collectJobFromForm();
+    sessionStorage.setItem(SESSION_JOB_KEY, JSON.stringify(snapshot));
+  } catch (err) {
+    console.warn('Could not snapshot current job', err);
+  }
+}
+
+/* Read the same-tab form snapshot created before Safari/iOS leaves for PDF preview. */
+function readCurrentJobSnapshot() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_JOB_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    console.warn('Could not restore current job snapshot', err);
+    return null;
+  }
+}
+
 /* Render a saved job record back into the form */
 function hydrateForm(job) {
   currentJob = normalizeJob(job);
@@ -424,6 +452,7 @@ function hydrateForm(job) {
   els.summaryNotes.value = currentJob.summaryNotes || '';
   els.currentJobTitle.textContent = draftTitle(currentJob, 'New Document');
   updateAdditionalInstallCrewFields();
+  writeCurrentJobSnapshot(currentJob);
   markDirty(false);
 }
 
@@ -478,6 +507,7 @@ function getItemControl(kind, item) {
 async function saveCurrentDraft() {
   currentJob = collectJobFromForm();
   await putStore('jobs', currentJob);
+  writeCurrentJobSnapshot(currentJob);
   await loadDraftList();
   hydrateForm(currentJob);
   setStatus(`Saved draft at ${new Date().toLocaleTimeString()}.`);

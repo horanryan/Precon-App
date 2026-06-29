@@ -17,6 +17,7 @@ async function generatePacket() {
     setStatus('Building PDF packet...');
     currentJob = collectJobFromForm();
     await putStore('jobs', currentJob);
+    writeCurrentJobSnapshot(currentJob);
     await loadDraftList();
 
     const photos = await getCurrentPhotos();
